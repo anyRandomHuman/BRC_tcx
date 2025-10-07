@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=00:03:00
-#SBATCH --partition=debug_cpu_il
+#SBATCH --partition=cpu_il
 module load anaconda3
 
 # Activate your conda environment
