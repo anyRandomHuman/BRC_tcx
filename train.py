@@ -43,15 +43,16 @@ flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations
 flags.DEFINE_boolean('render', True, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 1, 'Width of the critic network.')
+flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
 
-def read_pause():
-    if os.path.exists(f'./checkpoints/pause.txt'):
-        with open(f'./checkpoints/pause.txt', 'r') as f:
+def read_pause(save_dir='./checkpoints'):
+    if os.path.exists(f'{save_dir}/pause.txt'):
+        with open(f'{save_dir}/pause.txt', 'r') as f:
             line = f.readline().strip()
             if line:
                 env_name = line[:-2]
                 pause = int(line[-1])
-        os.remove(f'./checkpoints/pause.txt')
+        os.remove(f'{save_dir}/pause.txt')
         return env_name, pause
 
     return None, 0
@@ -109,7 +110,10 @@ def main(_):
         observations, terms, truns = env.reset_where_done(observations, terms, truns)
         return observations
     
-    save_path = f'./checkpoints/brc-{FLAGS.env_names}-{FLAGS.seed}'
+    save_dir = FLAGS.save_location
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    save_path = f'{save_dir}/brc-{FLAGS.env_names}-{FLAGS.seed}'
     
     obs = env.reset()
     start_iter = 0
