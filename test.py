@@ -1,5 +1,6 @@
 # # import os
-# import jax
+import jax
+from absl import flags
 # # with open("./checkpoints/pause.txt", "r") as f:
 # #     t = f.readline().strip()
 # #     print(t[-1])
@@ -9,10 +10,7 @@
 # #     data = f.read()
     
 # #     print(len(data))
-# print(jax.devices('gpu'))
-# # a = jax.numpy.zeros((3,3))
-# # print(a.device)
-
-website = '3e7a8db199c7e791e341e6d388d078bfc6b7a77c6f10282edf9c7b82f84f3ad4'
-mine = '3e7a8db199c7e791e341e6d388d078bfc6b7a77c6f10282edf9c7b82f84f3ad4'
-print(website == mine)
+flags.DEFINE_string('test_flag', 'test_value', 'A test flag.')
+FLAGS = flags.FLAGS
+print(FLAGS.test_flag)
+print(jax.devices())

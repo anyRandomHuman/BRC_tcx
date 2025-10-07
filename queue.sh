@@ -1,3 +1,3 @@
+#!/bin/bash
 debug_cpu_il
-conda activate py10
-python train.py
+conda run -n py10 train.py
