@@ -11,14 +11,13 @@ from jaxrl.normalizer import RewardNormalizer
 from jaxrl.logger import EpisodeRecorder
 from jaxrl.env_names import get_environment_list
 
-import tqdm
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
+flags.DEFINE_integer('eval_interval', 600, 'Eval interval.')
+flags.DEFINE_integer('batch_size', 100, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', int(1000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(500),'Number of training steps to start training.')
@@ -132,7 +131,7 @@ def main(_):
                 obs = sample(i, obs)
     
     pause_iter = -1
-    for i in tqdm.tqdm(range(FLAGS.max_steps - FLAGS.start_training - start_iter), desc='Training'):
+    for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         if i == 700:
             os.open(f'{submit_dir}/pause.flag', 'w').close()
             
