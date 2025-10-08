@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --time=12:00:00
-#SBATCH --partition=gpu_h100_il
+#SBATCH --time=00:20:00
+#SBATCH --partition=gpu_a100_short
 #SBATCH --gres=gpu:1
 #SBATCH --mail-user=urskl@student.kit.edu
 #SBATCH --mail-type=FAIL,END,START
