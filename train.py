@@ -110,8 +110,8 @@ def main(_):
         observations, terms, truns = env.reset_where_done(observations, terms, truns)
         return observations
 
-    submit_dir = os.environ.get('SLURM_SUBMIT_DIR')
-    save_dir = './checkpoints' if submit_dir is None else submit_dir + '/checkpoints'
+    submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
+    save_dir = submit_dir + '/checkpoints'
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)

@@ -109,8 +109,8 @@ def main(_):
         observations, terms, truns = env.reset_where_done(observations, terms, truns)
         return observations
 
-    submit_dir = os.environ.get('SLURM_SUBMIT_DIR')
-    save_dir = './checkpoints' if submit_dir is None else submit_dir + '/checkpoints'
+    submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
+    save_dir = submit_dir + '/checkpoints'
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -133,8 +133,6 @@ def main(_):
     pause_iter = -1
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         pause_flag = f'{submit_dir}/pause_test.flag'
-        if i == 70:
-            os.open(pause_flag, 'w').close()
             
         if os.path.exists(pause_flag):
             pause_iter = i
