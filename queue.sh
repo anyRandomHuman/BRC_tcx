@@ -10,6 +10,7 @@ module load  devel/cuda/12.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
 conda activate py10
+export MUJOCO_GL=egl
 
 # --- Good Practice: Define file paths using variables ---
 
