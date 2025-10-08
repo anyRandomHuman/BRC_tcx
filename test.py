@@ -18,15 +18,15 @@ flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 600, 'Eval interval.')
 flags.DEFINE_integer('batch_size', 100, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', int(1000), 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(1000), 'Replay buffer size.')
-flags.DEFINE_integer('start_training', int(500),'Number of training steps to start training.')
+flags.DEFINE_integer('max_steps', int(100), 'Number of training steps.')
+flags.DEFINE_integer('replay_buffer_size', int(100), 'Replay buffer size.')
+flags.DEFINE_integer('start_training', int(50),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'HB_NOHANDS', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 8, 'Width of the critic network.')
+flags.DEFINE_integer('width_critic', 2, 'Width of the critic network.')
 
 
 # flags.DEFINE_integer('seed', 0, 'Random seed.')
@@ -132,12 +132,13 @@ def main(_):
     
     pause_iter = -1
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
-        if i == 700:
-            os.open(f'{submit_dir}/pause.flag', 'w').close()
+        pause_flag = f'{submit_dir}/pause_test.flag'
+        if i == 70:
+            os.open(pause_flag, 'w').close()
             
-        if os.path.exists(f'{submit_dir}/pause.flag'):
+        if os.path.exists(pause_flag):
             pause_iter = i
-            os.remove(f'{submit_dir}/pause.flag')
+            os.remove(pause_flag)
             break
         obs = sample(i + FLAGS.start_training, obs)
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task
