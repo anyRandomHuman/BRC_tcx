@@ -21,6 +21,6 @@ export MUJOCO_GL=egl
 # Define the final output file on the shared filesystem
 #OUTPUT_FILE="$BASE_DIR/checkpoints"
 
-python train.py 
+python test.py 
 #--save_location "$OUTPUT_FILE"
 conda deactivate
