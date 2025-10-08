@@ -119,8 +119,8 @@ def main(_):
     
     obs = env.reset()
     start_iter = 0
-    if os.path.exists(f'./checkpoints/pause.txt'):
-        env_name, start_iter = read_pause()
+    if os.path.exists(f'{save_dir}/pause.txt'):
+        env_name, start_iter = read_pause(save_dir)
         if env_name == f'brc-{FLAGS.env_names}':
             agent.load(save_path)
             replay_buffer.load(save_path)
@@ -133,9 +133,9 @@ def main(_):
     
     pause_iter = -1
     for i in tqdm.tqdm(range(FLAGS.max_steps - FLAGS.start_training - start_iter), desc='Training'):
-        if os.path.exists(f'pause.flag'):
+        if os.path.exists(f'{submit_dir}/pause.flag'):
             pause_iter = i
-            os.remove(f'pause.flag')
+            os.remove(f'{submit_dir}/pause.flag')
             break
         obs = sample(i + FLAGS.start_training, obs)
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task
@@ -148,7 +148,7 @@ def main(_):
     replay_buffer.save(save_path)
     
     if pause_iter >= 0:
-        with open(f'./checkpoints/pause.txt', 'w') as f:
+        with open(f'{save_dir}/pause.txt', 'w') as f:
             f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
 
             
