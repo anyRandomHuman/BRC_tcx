@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu_a100_il
 #SBATCH --gres=gpu:1
 #SBATCH --mail-user=urskl@student.kit.edu
-#SBATCH --mail-type=FAIL,END,START
+#SBATCH --mail-type=FAIL,END,
 #SBATCH --signal=B:USR1@3600
 
 module load  devel/cuda/12.8
