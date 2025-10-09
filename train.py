@@ -61,12 +61,14 @@ def read_pause(save_dir='./checkpoints'):
 def main(_):
     if FLAGS.log_to_wandb:
         import wandb
+        import datetime
+        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         wandb.init(
             config=FLAGS,
             entity='',
-            project='',
+            project=f'BRC',
             group=f'{FLAGS.env_names}',
-            name=f'{FLAGS.env_names}_{FLAGS.seed}'
+            name=f'{current_time}_{FLAGS.seed}'
         )
         
     env_names = get_environment_list(FLAGS.env_names)
