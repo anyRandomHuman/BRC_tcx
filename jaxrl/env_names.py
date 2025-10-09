@@ -80,6 +80,18 @@ METAWORLD_ALL = [
     'window-close-v2-goal-observable'
     ]
 
+METAWORLD_9 = [
+    'assembly-v2-goal-observable',
+    'basketball-v2-goal-observable',
+    'bin-picking-v2-goal-observable',
+    'box-close-v2-goal-observable',
+    'button-press-topdown-v2-goal-observable',
+    'button-press-topdown-wall-v2-goal-observable',
+    'button-press-v2-goal-observable',
+    'button-press-wall-v2-goal-observable',
+    'coffee-button-v2-goal-observable',
+]
+
 METAWORLD_DMC = [
     'walker-stand', 
     'walker-walk', 
@@ -329,7 +341,8 @@ EnvironmentsDict = {
     'SHADOWHAND_TEST': SHADOWHAND_TEST,
     'TEST_SINGLE': TEST_SINGLE,
     'TEST_MULTI': TEST_MULTI,
-    'TEST_MULTI_VARYING': TEST_MULTI_VARYING
+    'TEST_MULTI_VARYING': TEST_MULTI_VARYING,
+    'METAWORLD_9': METAWORLD_9
     }
 
 def get_environment_list(env_names: str | list):
