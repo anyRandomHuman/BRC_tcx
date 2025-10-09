@@ -145,10 +145,10 @@ def main(_):
         _ = agent.update(batches, FLAGS.updates_per_step, i)
         if i % eval_interval == 0 and i >= FLAGS.start_training:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
-	    agent.save(save_path)
-    	    replay_buffer.save(save_path)
-	    with open(f'{save_dir}/pause.txt', 'w') as f:
-		f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
+            agent.save(save_path)
+            replay_buffer.save(save_path)
+        with open(f'{save_dir}/pause.txt', 'w') as f:
+            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
     agent.save(save_path)
     replay_buffer.save(save_path)
     
