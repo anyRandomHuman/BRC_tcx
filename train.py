@@ -148,7 +148,7 @@ def main(_):
             agent.save(save_path)
             replay_buffer.save(save_path)
         with open(f'{save_dir}/pause.txt', 'w') as f:
-            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
+            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{i}\n')
     agent.save(save_path)
     replay_buffer.save(save_path)
     
