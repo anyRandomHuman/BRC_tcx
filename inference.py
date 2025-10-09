@@ -1,9 +1,6 @@
 import os
 from jaxrl.agent.brc_learner import BRC
-from jaxrl.replay_buffer import ParallelReplayBuffer
 from jaxrl.envs import ParallelEnv
-from jaxrl.normalizer import RewardNormalizer
-from jaxrl.logger import EpisodeRecorder
 from jaxrl.env_names import get_environment_list
 import cv2
 
@@ -16,7 +13,6 @@ checkpoint_dir = f'{submit_dir}/checkpoints/{env_name}'
 num_tasks = len(env_names)
 
 env = ParallelEnv(env_names, seed=0)
-statistics_recorder = EpisodeRecorder(num_tasks)
 
 kwargs = {}
 kwargs['updates_per_step'] = 2
