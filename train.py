@@ -121,8 +121,8 @@ def main(_):
     
     obs = env.reset()
     start_iter = 0
-    if os.path.exists(f'{save_dir}/pause.txt'):
-        env_name, start_iter = read_pause(save_dir)
+    if os.path.exists(f'{save_path}/pause.txt'):
+        env_name, start_iter = read_pause(save_path)
         if env_name == f'brc-{FLAGS.env_names}':
             agent.load(save_path)
             replay_buffer.load(save_path)
@@ -147,14 +147,14 @@ def main(_):
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
             agent.save(save_path)
             replay_buffer.save(save_path)
-        with open(f'{save_dir}/pause.txt', 'w') as f:
-            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{i}\n')
+        with open(f'{save_path}/pause.txt', 'w') as f:
+            f.write(f'{i}')
     agent.save(save_path)
     replay_buffer.save(save_path)
     
     if pause_iter >= 0:
-        with open(f'{save_dir}/pause.txt', 'w') as f:
-            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
+        with open(f'{save_path}/pause.txt', 'w') as f:
+            f.write(f'{pause_iter}')
 
             
 if __name__ == '__main__':
