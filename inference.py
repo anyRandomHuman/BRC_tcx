@@ -33,7 +33,7 @@ agent.load(checkpoint_dir)
 
 eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True)
 renders = eval_stats['renders']
-videos_dir = './videos'
+videos_dir = f'{submit_dir}/videos'
 os.makedirs(videos_dir, exist_ok=True)
 for i in range(renders.shape[0]):
     frames = renders[i]  # shape: (num_frames, H, W, C)
