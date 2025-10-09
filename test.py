@@ -136,7 +136,7 @@ def main(_):
             
         if os.path.exists(pause_flag):
             pause_iter = i
-            # os.remove(pause_flag)
+            #os.remove(pause_flag)
             break
         obs = sample(i + FLAGS.start_training, obs)
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task

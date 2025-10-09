@@ -1,0 +1,176 @@
+'?':
+    value: false
+_wandb:
+    value:
+        cli_version: 0.22.1
+        e:
+            hqu8a9ji3fr1hfo7qa3khnqdfrxhn1cz:
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 64
+                cpu_count_logical: 128
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "99880501248"
+                        used: "47619883008"
+                email: tcx513887573@gmail.com
+                executable: /home/ka/ka_anthropomatik/ka_et4232/miniconda3/envs/py10/bin/python
+                git:
+                    commit: bd63be54848996338aa17a33faf45c1a2fcfcd9e
+                    remote: git@github.com:anyRandomHuman/BRC_tcx.git
+                gpu: NVIDIA H100 PCIe
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Hopper
+                      cudaCores: 14592
+                      memoryTotal: "85520809984"
+                      name: NVIDIA H100 PCIe
+                      uuid: GPU-c84f8fdc-c01c-c96b-dfb4-dce174caf888
+                host: uc2n908.localdomain
+                memory:
+                    total: "540653101056"
+                os: Linux-5.14.0-427.50.1.el9_4.x86_64-x86_64-with-glibc2.34
+                program: /pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx/train.py
+                python: CPython 3.10.18
+                root: /pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx
+                slurm:
+                    cluster_name: uc3
+                    conf: /etc/slurm/slurm.conf
+                    cpus_on_node: "32"
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_account: ka
+                    job_cpus_per_node: "32"
+                    job_end_time: "1759970157"
+                    job_gid: "44355"
+                    job_gpus: "3"
+                    job_id: "1721770"
+                    job_name: queue.sh
+                    job_nodelist: uc2n908
+                    job_num_nodes: "1"
+                    job_partition: gpu_h100_il
+                    job_qos: normal
+                    job_start_time: "1759926957"
+                    job_uid: "507685"
+                    job_user: ka_et4232
+                    jobid: "1721770"
+                    localid: "0"
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: uc2n908
+                    oom_kill_step: "0"
+                    prio_process: "0"
+                    procid: "0"
+                    script_context: prolog_task
+                    submit_dir: /pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx
+                    submit_host: uc3n991.localdomain
+                    task_pid: "480514"
+                    tasks_per_node: "32"
+                    topology_addr: VirtualInterconnnect.uc2ibbi3r.uc2ibbi3e02.uc2n908
+                    topology_addr_pattern: switch.switch.switch.node
+                startedAt: "2025-10-08T12:37:22.176543Z"
+                writerId: hqu8a9ji3fr1hfo7qa3khnqdfrxhn1cz
+        m: []
+        python_version: 3.10.18
+        t:
+            "1":
+                - 12
+                - 45
+            "2":
+                - 1
+                - 12
+                - 45
+            "3":
+                - 13
+                - 16
+            "4": 3.10.18
+            "5": 0.22.1
+            "12": 0.22.1
+            "13": linux-x86_64
+alsologtostderr:
+    value: false
+batch_size:
+    value: 1024
+chex_assert_multiple_cpu_devices:
+    value: false
+chex_n_cpu_devices:
+    value: 1
+chex_skip_pmap_variant_if_single_device:
+    value: true
+env_names:
+    value: HB_NOHANDS
+eval_episodes:
+    value: 10
+eval_interval:
+    value: 50000
+help:
+    value: false
+helpfull:
+    value: false
+helpshort:
+    value: false
+helpxml:
+    value: false
+log_dir:
+    value: ""
+log_to_wandb:
+    value: true
+logtostderr:
+    value: false
+max_steps:
+    value: 1000000
+offline_evaluation:
+    value: true
+only_check_args:
+    value: false
+pdb:
+    value: false
+pdb_post_mortem:
+    value: false
+profile_file:
+    value: null
+pymjcf_debug:
+    value: false
+pymjcf_debug_full_dump_dir:
+    value: ""
+pymjcf_log_xml:
+    value: false
+render:
+    value: false
+replay_buffer_size:
+    value: 1000000
+run_with_pdb:
+    value: false
+run_with_profiling:
+    value: false
+seed:
+    value: 0
+showprefixforinfo:
+    value: true
+start_training:
+    value: 5000
+stderrthreshold:
+    value: fatal
+test_random_seed:
+    value: 301
+test_randomize_ordering_seed:
+    value: ""
+test_srcdir:
+    value: ""
+test_tmpdir:
+    value: /scratch/slurm_tmpdir/job_1721770/absl_testing
+timeout:
+    value: true
+updates_per_step:
+    value: 2
+use_cprofile_for_profiling:
+    value: true
+v:
+    value: 0
+verbosity:
+    value: 0
+width_critic:
+    value: 4096
+xml_output_file:
+    value: ""
