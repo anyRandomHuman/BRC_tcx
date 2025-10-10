@@ -8,7 +8,7 @@ import argparse
 
 os.environ['MUJOCO_GL'] = 'egl'
 
-episode_len = 1000
+episode_len = 200
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS', help='Name of the environment to use.')
 
@@ -37,7 +37,7 @@ agent = BRC(
 agent.load_inference(checkpoint_dir)
 agent = stop_gradient(agent)
 
-eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True)
+eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True, max_render_steps=600)
 renders = eval_stats['renders']
 videos_dir = f'{submit_dir}/videos/{env_name}'
 os.makedirs(videos_dir, exist_ok=True)
