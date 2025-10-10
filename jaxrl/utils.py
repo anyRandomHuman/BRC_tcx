@@ -17,6 +17,29 @@ Batch = collections.namedtuple(
 def tree_norm(tree):
     return jnp.sqrt(sum((x**2).sum() for x in jax.tree_util.tree_leaves(tree)))
 
+def prune_single_child_nodes(tree):
+    # If it's a leaf (not a container), return as is
+    if not isinstance(tree, (dict, list, tuple)):
+        return tree
+    # Convert to list of children
+    if isinstance(tree, dict):
+        children = list(tree.values())
+    else:
+        children = list(tree)
+    # Recursively prune children
+    pruned_children = [prune_single_child_nodes(child) for child in children]
+    # If only one child, return that child directly
+    if len(pruned_children) == 1:
+        return pruned_children[0]
+    # Otherwise, reconstruct the container
+    if isinstance(tree, dict):
+        return dict(zip(tree.keys(), pruned_children))
+    elif isinstance(tree, list):
+        return pruned_children
+    elif isinstance(tree, tuple):
+        return tuple(pruned_children)
+
+
 @flax.struct.dataclass
 class SaveState:
     params: Params
