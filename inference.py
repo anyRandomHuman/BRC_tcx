@@ -5,8 +5,9 @@ from jaxrl.env_names import get_environment_list
 import cv2
 import argparse
 
-episode_len = 1000
+os.environ['MUJOCO_GL'] = 'egl'
 
+episode_len = 1000
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
 
@@ -32,7 +33,7 @@ agent = BRC(
         num_tasks=num_tasks,
         **kwargs,
     )
-agent.load(checkpoint_dir)
+agent.load_inference(checkpoint_dir)
 
 eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True)
 renders = eval_stats['renders']
