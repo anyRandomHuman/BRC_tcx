@@ -6,10 +6,10 @@ import cv2
 import argparse
 
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
-parser.add_argument('--env', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
+parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
 
-env_name = parser.parse_args().env
-env_name = str(env_name).split('-')[1]
+checkpoint_name = parser.parse_args().env
+env_name = str(checkpoint_name).split('-')[1]
 episode_len = 1000
 
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
