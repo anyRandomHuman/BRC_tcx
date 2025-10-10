@@ -8,7 +8,7 @@ import argparse
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
 
-checkpoint_name = parser.parse_args().env
+checkpoint_name = parser.parse_args().ckp
 env_name = str(checkpoint_name).split('-')[1]
 episode_len = 1000
 
