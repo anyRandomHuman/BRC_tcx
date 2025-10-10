@@ -3,8 +3,12 @@ from jaxrl.agent.brc_learner import BRC
 from jaxrl.envs import ParallelEnv
 from jaxrl.env_names import get_environment_list
 import cv2
+import argparse
 
-env_name = f'brc-HB_NOHANDS-0'
+parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
+parser.add_argument('--env', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
+
+env_name = parser.parse_args().env
 episode_len = 1000
 
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'

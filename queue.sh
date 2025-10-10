@@ -25,6 +25,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train.py 
+python train.py --env brc-HB_HANDS-0 
 
 conda deactivate
