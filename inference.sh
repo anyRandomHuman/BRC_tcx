@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=00:10:00
-#SBATCH --partition=gpu_a100_short
+#SBATCH --partition=gpu_a100_il
 #SBATCH --gres=gpu:1
 
 module load  devel/cuda/12.8
