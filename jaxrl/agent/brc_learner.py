@@ -242,3 +242,6 @@ class BRC(object):
         self.critic = self.critic.load(f'{path}/critic.txt')
         self.target_critic = self.target_critic.load(f'{path}/target_critic.txt')
         self.temp = self.temp.load(f'{path}/temp.txt')
+
+    def load_inference(self, path):
+        self.actor = self.actor.load(f'{path}/actor.txt')
