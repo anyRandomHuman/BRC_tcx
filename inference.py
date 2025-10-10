@@ -2,6 +2,7 @@ import os
 from jaxrl.agent.brc_learner import BRC
 from jaxrl.envs import ParallelEnv
 from jaxrl.env_names import get_environment_list
+from jax.lax import stop_gradient
 import cv2
 import argparse
 
@@ -9,7 +10,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 episode_len = 1000
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
-parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
+parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS', help='Name of the environment to use.')
 
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
 
@@ -34,6 +35,7 @@ agent = BRC(
         **kwargs,
     )
 agent.load_inference(checkpoint_dir)
+agent = stop_gradient(agent)
 
 eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True)
 renders = eval_stats['renders']
