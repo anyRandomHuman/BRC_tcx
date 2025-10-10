@@ -1,160 +1,21 @@
+from jaxrl.networks import NormalTanhPolicy
 import os
+import jax
+import jax.numpy as jnp
+from jaxrl.utils import Model
+ckp = r'./checkpoints/brc-HB_NOHANDS/actor.txt'
+save_path = r'test_space\actor.txt'
+# brc = BRC(0, 0,0, 1)
+actor_def = NormalTanhPolicy(action_dim=6)
+actor = Model.create(actor_def, [jax.random.PRNGKey(0), jnp.zeros((1, 30))])
+actor.save(save_path)
 
-# os.environ['MUJOCO_GL'] = 'egl'
+actor1 = Model.create(actor_def, [jax.random.PRNGKey(0), jnp.zeros((1, 30))])
+actor1.load(save_path)
 
-from absl import app, flags
-
-from jaxrl.agent.brc_learner import BRC
-from jaxrl.replay_buffer import ParallelReplayBuffer
-from jaxrl.envs import ParallelEnv
-from jaxrl.normalizer import RewardNormalizer
-from jaxrl.logger import EpisodeRecorder
-from jaxrl.env_names import get_environment_list
-
-
-FLAGS = flags.FLAGS
-
-flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 600, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 100, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', int(100), 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(100), 'Replay buffer size.')
-flags.DEFINE_integer('start_training', int(50),'Number of training steps to start training.')
-flags.DEFINE_string('env_names', 'HB_NOHANDS', 'Environment name.')
-flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
-flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
-flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
-flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 2, 'Width of the critic network.')
-
-
-# flags.DEFINE_integer('seed', 0, 'Random seed.')
-# flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-# flags.DEFINE_integer('eval_interval', 50, 'Eval interval.')
-# flags.DEFINE_integer('batch_size', 1, 'Mini batch size.')
-# flags.DEFINE_integer('max_steps', int(5), 'Number of training steps.')
-# flags.DEFINE_integer('replay_buffer_size', int(5), 'Replay buffer size.')
-# flags.DEFINE_integer('start_training', int(2),'Number of training steps to start training.')
-# flags.DEFINE_string('env_names', 'HB_NOHANDS', 'Environment name.')
-# flags.DEFINE_boolean('log_to_wandb', False, 'Whether to log to wandb.')
-# flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
-# flags.DEFINE_boolean('render', True, 'Whether to log the rendering to wandb.')
-# flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
-# flags.DEFINE_integer('width_critic', 1, 'Width of the critic network.')
-# flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
-
-def read_pause(save_dir='./checkpoints'):
-    if os.path.exists(f'{save_dir}/pause.txt'):
-        with open(f'{save_dir}/pause.txt', 'r') as f:
-            line = f.readline().strip()
-            if line:
-                env_name = line[:-2]
-                pause = int(line[-1])
-        os.remove(f'{save_dir}/pause.txt')
-        return env_name, pause
-
-    return None, 0
-
-
-def main(_):
-    if FLAGS.log_to_wandb:
-        import wandb
-        wandb.init(
-            config=FLAGS,
-            entity='',
-            project='',
-            group=f'{FLAGS.env_names}',
-            name=f'{FLAGS.env_names}_{FLAGS.seed}'
-        )
-        
-    env_names = get_environment_list(FLAGS.env_names)
-    env = ParallelEnv(env_names, seed=FLAGS.seed)
-    if FLAGS.offline_evaluation:
-        eval_env = ParallelEnv(env_names, seed=FLAGS.seed+42)
-    else:
-        eval_env = None
-        
-    eval_interval = FLAGS.eval_interval if FLAGS.offline_evaluation else 5000
-        
-    # Kwargs setup
-    kwargs = {}
-    kwargs['updates_per_step'] = FLAGS.updates_per_step
-    kwargs['width_critic'] = FLAGS.width_critic
+# with open(ckp, 'rb') as f:
+#     print(f.read())
     
-    num_tasks = len(env.envs)
-
-    agent = BRC(
-        FLAGS.seed,
-        env.observation_space.sample()[:1],
-        env.action_space.sample()[:1],
-        num_tasks=num_tasks,
-        **kwargs,
-    )
+#     print('-----------------')
+#     actor.load(ckp)
     
-    replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_tasks=num_tasks)    
-    reward_normalizer = RewardNormalizer(num_tasks, agent.target_entropy, discount=agent.discount, max_steps=None) #change max_steps according to env
-    statistics_recorder = EpisodeRecorder(num_tasks)
-    
-    
-
-    def sample(i, observations=None):          
-        actions = env.action_space.sample() if i < FLAGS.start_training else agent.sample_actions(observations, temperature=1.0) #sample for every env
-        next_observations, rewards, terms, truns, goals = env.step(actions) #state shape (num_envs, obs_dim)
-        reward_normalizer.update(rewards, terms, truns)
-        statistics_recorder.update(rewards, goals, terms, truns)
-        masks = env.generate_masks(terms, truns)
-        replay_buffer.insert(observations, actions, rewards, masks, next_observations)
-        observations = next_observations
-        observations, terms, truns = env.reset_where_done(observations, terms, truns)
-        return observations
-
-    submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-    save_dir = submit_dir + '/checkpoints'
- #   save_dir = FLAGS.save_location
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    save_path = f'{save_dir}/brc-{FLAGS.env_names}-{FLAGS.seed}'
-    
-    obs = env.reset()
-    start_iter = 0
-    if os.path.exists(f'{save_dir}/pause.txt'):
-        env_name, start_iter = read_pause(save_dir)
-        if env_name == f'brc-{FLAGS.env_names}':
-            agent.load(save_path)
-            replay_buffer.load(save_path)
-            print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
-            obs = sample(start_iter, obs)
-        else:
-            print(f'Pause file found, but env name {env_name} does not match current env {FLAGS.env_names}, starting from scratch')
-            for i in range(FLAGS.start_training):
-                obs = sample(i, obs)
-    
-    pause_iter = -1
-    for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
-        pause_flag = f'{submit_dir}/pause_test.flag'
-            
-        if os.path.exists(pause_flag):
-            pause_iter = i
-            #os.remove(pause_flag)
-            break
-        obs = sample(i + FLAGS.start_training, obs)
-        batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task
-        batches = reward_normalizer.normalize(batches, agent.get_temperature())
-        _ = agent.update(batches, FLAGS.updates_per_step, i)
-        if i % eval_interval == 0 and i >= FLAGS.start_training:
-            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
-
-    agent.save(save_path)
-    replay_buffer.save(save_path)
-    
-    if pause_iter >= 0:
-        with open(f'{save_dir}/pause.txt', 'w') as f:
-            f.write(f'brc-{FLAGS.env_names}-{FLAGS.seed}_{pause_iter}\n')
-
-            
-if __name__ == '__main__':
-    app.run(main)
-
-
-# /pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx/checkpoints/HB_HANDS/actor.txt

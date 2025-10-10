@@ -158,7 +158,7 @@ class BRC(object):
         task_ids_init = self.task_ids[:1]
         self.multitask = True if num_tasks > 1 else False
         
-        actor_init = jnp.concatenate((observations, task_embedding_init), axis=-1) if self.multitask else observations
+        actor_init = jnp.concatenate((observations, task_embedding_init), axis=-1) if self.multitask else observations #
         
         def _init_models(seed):
             rng = jax.random.PRNGKey(seed)
@@ -239,6 +239,6 @@ class BRC(object):
         
     def load(self, path):
         self.actor = self.actor.load(f'{path}/actor.txt')
-        self.critic = self.actor.load(f'{path}/critic.txt')
-        self.target_critic = self.actor.load(f'{path}/target_critic.txt')
-        self.temp = self.actor.load(f'{path}/temp.txt')
+        self.critic = self.critic.load(f'{path}/critic.txt')
+        self.target_critic = self.target_critic.load(f'{path}/target_critic.txt')
+        self.temp = self.temp.load(f'{path}/temp.txt')

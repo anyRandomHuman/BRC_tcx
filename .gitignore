@@ -1,3 +1,6 @@
 checkpoints/*
 wandb/*
 slurm*
+test_space/*
+jaxrl/__pycache__/*
+jaxrl/agent/__pycache__/*
