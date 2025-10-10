@@ -4,10 +4,11 @@ from jaxrl.envs import ParallelEnv
 from jaxrl.env_names import get_environment_list
 import cv2
 
+env_name = f'brc-HB_NOHANDS-0'
 episode_len = 1000
 
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-env_name = f''
+
 env_names = get_environment_list(env_name)
 checkpoint_dir = f'{submit_dir}/checkpoints/{env_name}'
 num_tasks = len(env_names)
@@ -29,7 +30,7 @@ agent.load(checkpoint_dir)
 
 eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True)
 renders = eval_stats['renders']
-videos_dir = f'{submit_dir}/videos'
+videos_dir = f'{submit_dir}/videos/{env_name}'
 os.makedirs(videos_dir, exist_ok=True)
 for i in range(renders.shape[0]):
     frames = renders[i]  # shape: (num_frames, H, W, C)
