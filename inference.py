@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser(description="A script to demonstrate run option
 parser.add_argument('--env', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
 
 env_name = parser.parse_args().env
+env_name = str(env_name).split('-')[1]
 episode_len = 1000
 
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
