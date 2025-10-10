@@ -5,17 +5,18 @@ from jaxrl.env_names import get_environment_list
 import cv2
 import argparse
 
+episode_len = 1000
+
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS-0', help='Name of the environment to use.')
 
-checkpoint_name = parser.parse_args().env
-env_name = str(checkpoint_name).split('-')[1]
-episode_len = 1000
-
 submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
 
+checkpoint_name = parser.parse_args().ckp
+checkpoint_dir = f'{submit_dir}/checkpoints/{checkpoint_name}'
+
+env_name = str(checkpoint_name).split('-')[1]
 env_names = get_environment_list(env_name)
-checkpoint_dir = f'{submit_dir}/checkpoints/{env_name}'
 num_tasks = len(env_names)
 
 env = ParallelEnv(env_names, seed=0)

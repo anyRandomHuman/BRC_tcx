@@ -155,3 +155,6 @@ def main(_):
             
 if __name__ == '__main__':
     app.run(main)
+
+
+# /pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx/checkpoints/HB_HANDS/actor.txt
