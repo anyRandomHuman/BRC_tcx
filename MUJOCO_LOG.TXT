@@ -1,0 +1,63 @@
+Thu Oct  9 11:47:16 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 81. The simulation is unstable. Time = 0.5460.
+
+Thu Oct  9 12:01:39 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 77. The simulation is unstable. Time = 0.7060.
+
+Thu Oct  9 12:04:30 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 81. The simulation is unstable. Time = 0.8060.
+
+Thu Oct  9 12:21:31 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 90. The simulation is unstable. Time = 0.4840.
+
+Thu Oct  9 13:21:34 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 0.7980.
+
+Thu Oct  9 14:06:58 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 87. The simulation is unstable. Time = 1.2180.
+
+Thu Oct  9 14:52:40 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 79. The simulation is unstable. Time = 1.0880.
+
+Thu Oct  9 15:02:54 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 79. The simulation is unstable. Time = 1.1500.
+
+Thu Oct  9 15:35:24 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 0.8700.
+
+Thu Oct  9 15:53:31 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 78. The simulation is unstable. Time = 3.0920.
+
+Thu Oct  9 16:09:47 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 5.0800.
+
+Thu Oct  9 16:23:15 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 1.1580.
+
+Thu Oct  9 16:27:48 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 81. The simulation is unstable. Time = 1.0780.
+
+Thu Oct  9 17:04:56 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 76. The simulation is unstable. Time = 1.8360.
+
+Thu Oct  9 17:16:44 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 1.5000.
+
+Thu Oct  9 18:01:34 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 78. The simulation is unstable. Time = 5.8560.
+
+Thu Oct  9 19:37:20 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 87. The simulation is unstable. Time = 1.8340.
+
+Thu Oct  9 20:57:55 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 0.7620.
+
+Thu Oct  9 22:57:12 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 75. The simulation is unstable. Time = 7.2260.
+
+Fri Oct 10 04:38:42 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 78. The simulation is unstable. Time = 2.6300.
+
+Fri Oct 10 09:13:49 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 79. The simulation is unstable. Time = 0.1880.
+
