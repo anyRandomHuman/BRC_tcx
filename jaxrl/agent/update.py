@@ -1,38 +1,48 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite
 
 @jax.jit
-def _compute_rank_from_features_tree_func(feature_matrix, rank_delta=0.01):
-    sing_values = jnp.linalg.svd(feature_matrix, compute_uv=False)
+def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
+    sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
     cumsum = jnp.cumsum(sing_values)
     nuclear_norm = jnp.sum(sing_values)
     approximate_rank_threshold = 1.0 - rank_delta
     threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
     effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
-    return effective_rank
-
-def  compute_rank_from_features(intermediates):
-    return prune_single_child_nodes(jax.tree.map(intermediates))
-@jax.jit
-def _dead_neurals_tree_func(activation):
-    dead_neurals_info = {}
+    pnorm = jnp.sqrt(sum(weight_matrix**2).sum())
     
-    outputs = activation
-    num_neurons = outputs.shape[1]
-    dead_neurons = jnp.all(outputs == 0, axis=0).sum().item()
-    dead_percentage = (dead_neurons / num_neurons) * 100
-    dead_neurals_info = {
-        'dead_neurons': dead_neurons,
-        'total_neurons': num_neurons,
-        'dead_percentage': dead_percentage
+    return_dict = {
+        'effective_rank': effective_rank, 
+        'parameter_norm': pnorm
     }
-    return dead_neurals_info
+    return return_dict
 
-def find_dead_neurals(intermediates):
-    dead = jax.tree.map(_dead_neurals_tree_func, intermediates)
+def  compute_weight_metrics_pre_layer(intermediates):
+    return prune_single_child_nodes(jax.tree.map(_weight_metric_tree_func, intermediates))
+
+@jax.jit
+def _activation_metric_tree_func(activation):
+
+    num_neurons = activation.shape[1]
+    dead_neurons = jnp.all(activation == 0, axis=0).sum().item()
+    dead_percentage = (dead_neurons / num_neurons) * 100
+    fnorm = jnp.sqrt(sum(activation**2).sum())
+    
+    return_dict = {
+        'dead_neurons': dead_neurons,
+        'dead_percentage': dead_percentage,
+        'feature_norm': fnorm
+    }
+    return return_dict
+
+def compute_activation_metrics_per_layer(activations_per_layer):
+    dead = jax.tree.map(_activation_metric_tree_func, activations_per_layer)
     return prune_single_child_nodes(dead)
+
+
+
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -42,11 +52,11 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
         inputs = jnp.concatenate((inputs, task_embeddings), axis=-1)
     return inputs
 
-def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, num_bins: int, v_max: float, multitask: bool, er_dr=False):
+def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, num_bins: int, v_max: float, multitask: bool, compute_per_layer_metrics=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
     def actor_loss_fn(actor_params: Params):
         #changes for computing efective rank and dead neurons
-        if er_dr:
+        if compute_per_layer_metrics:
             dist, intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)        
         else:
             dist = actor.apply({'params': actor_params}, inputs)        
@@ -57,7 +67,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         q_values = (bin_values * q_probs).sum(-1)    
         actor_loss = (log_probs * temp().mean() - q_values).mean()
         
-        info = {
+        loss_info = {
             'actor_loss': actor_loss,
             'entropy': -log_probs.mean(),
             'actor_pnorm': tree_norm(actor_params),
@@ -65,11 +75,12 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         
         #changes for computing efective rank and dead neurons
         
-        if er_dr:
-            effective_rank = compute_rank_from_features(intermedate)
-            dead_neurons = find_dead_neurals(intermedate)
-            info['effective_rank'] = effective_rank
-            info['dead_neurons'] = dead_neurons
+        if compute_per_layer_metrics:
+            param_metrics = compute_weight_metrics_pre_layer(actor_params)
+            feature_metrics = compute_activation_metrics_per_layer(intermedate)
+            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
+            loss_info = loss_info|per_layer_metrics
+
             
         return actor_loss, 
     new_actor, info = actor.apply_gradient(actor_loss_fn)
@@ -128,7 +139,7 @@ def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: 
 
 
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
-           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool, er_dr=False):
+           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool, compute_per_layer_metrics=False):
     
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
     dist = actor(inputs)
@@ -151,8 +162,8 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
     q_value_target = (bin_values * target_probs).sum(-1)
 
     def critic_loss_fn(critic_params: Params):
-        if er_dr:
-            dist, intermedate = critic.apply({'params': critic_params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
+        if compute_per_layer_metrics:
+            q_logits, intermedate = critic.apply({'params': critic_params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
         else:
             q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
@@ -168,11 +179,11 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
             #"critic_agnorm": jnp.sqrt((action_grad**2).sum(-1)).mean(0),
         }
         
-        if er_dr:
-            effective_rank = compute_rank_from_features(intermedate)
-            dead_neurons = find_dead_neurals(intermedate)
-            info['effective_rank'] = effective_rank
-            info['dead_neurons'] = dead_neurons
+        if compute_per_layer_metrics:
+            effective_rank = compute_weight_metrics_pre_layer(intermedate)
+            dead_neurons = compute_activation_metrics_per_layer(intermedate)
+            per_layer_info = merge_trees_overwrite(dead_neurons, effective_rank)
+            info = info | per_layer_info
             
         return critic_loss, info
     new_critic, info = critic.apply_gradient(critic_loss_fn)
@@ -186,21 +197,12 @@ def update_target_critic(critic: Model, target_critic: Model, tau: float):
         target_critic.params)
     return target_critic.replace(params=new_target_params)
 
-def update_temperature(temp: Model, entropy: float, target_entropy: float, er_dr=False):
+def update_temperature(temp: Model, entropy: float, target_entropy: float):
     def temperature_loss_fn(temp_params):
-        if er_dr:
-            temperature, intermedate = temp.apply({'params': temp_params}, capture_intermediates=True, mutable=True)        
-        else:
-            temperature = temp.apply({'params': temp_params})
+        temperature = temp.apply({'params': temp_params})
         temp_loss = temperature * (entropy - target_entropy).mean()
         info = {'temperature': temperature, 'temp_loss': temp_loss}
-        
-        if er_dr:   
-            effective_rank = compute_rank_from_features(intermedate)
-            dead_neurons = find_dead_neurals(intermedate)
-            info['effective_rank'] = effective_rank
-            info['dead_neurons'] = dead_neurons 
-            
+    
         return temp_loss, info
     new_temp, info = temp.apply_gradient(temperature_loss_fn)
     info.pop('grad_norm')

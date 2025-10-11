@@ -2,6 +2,8 @@ import jax
 import jax.numpy as jnp
 from flax import linen as nn
 from typing import Sequence
+from jaxrl.networks import NormalTanhPolicy
+from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite
 
 # --- 1. Define a standard Flax model ---
 class SimpleMLP(nn.Module):
@@ -20,18 +22,11 @@ key = jax.random.PRNGKey(0)
 # Use a representative batch of data
 input_data = jnp.zeros((16, 32)) # Batch size of 128
 
-model = SimpleMLP(features=[16, 8, 4])
+# model = SimpleMLP(features=[16, 8, 4])
+model = NormalTanhPolicy(action_dim=2, hidden_dims=4, depth=2)
 # Initialize the model parameters
 params = model.init(key, input_data)['params']
 
-# --- 3. Run the model and capture activations ---
-# We define a filter function to only capture the output of ReLU activations.
-# In Flax, `nn.relu` isn't a layer, but a function. So we look for outputs
-# from the Dense layers right before the ReLU is applied in the model's call.
-# A simpler way is to just grab all intermediates and filter by name later.
-
-# The `capture_intermediates` argument is the key.
-# We pass a boolean `True` to get everything.
 final_output, mutable_variables = model.apply(
     {'params': params}, 
     input_data,
@@ -41,26 +36,36 @@ final_output, mutable_variables = model.apply(
 
 intermediates = mutable_variables['intermediates']
 
-def _dead_neurals_tree_func(activation):
+def _dead_neurals_tree_func(activation, dict={}):
     dead_neurals_info = {}
     
     outputs = activation
     num_neurons = outputs.shape[1]
     dead_neurons = jnp.all(outputs == 0, axis=0).sum().item()
     dead_percentage = (dead_neurons / num_neurons) * 100
-    dead_neurals_info = {
+    dead_neurals_info = dict|{
         'dead_neurons': dead_neurons,
         'total_neurons': num_neurons,
         'dead_percentage': dead_percentage
     }
     return dead_neurals_info
 
-def dead_neurals(intermediates):
-    dead = jax.tree.map(_dead_neurals_tree_func, intermediates)
-    return dead
+def dead_neurals(intermediates, tree=None):
+    if tree:
+        dead = jax.tree.map(_dead_neurals_tree_func, intermediates, tree)
+    else:
+        dead = jax.tree.map(_dead_neurals_tree_func, intermediates)
+        
+    return prune_single_child_nodes(dead)
 
+def parameter_norm_per_layer(params):
+    norm = jnp.sqrt(sum(params**2).sum())
+    return norm
+
+
+
+
+p = jax.tree.map(parameter_norm_per_layer, params)
 d = dead_neurals(intermediates)
-
-f = jax.tree.flatten(d)
-
-print(f)
+m = merge_trees_overwrite(d, p)
+print(p)

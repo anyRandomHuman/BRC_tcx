@@ -39,6 +39,18 @@ def prune_single_child_nodes(tree):
     elif isinstance(tree, tuple):
         return tuple(pruned_children)
 
+def merge_trees_overwrite(tree1, tree2):
+    """Merge tree2 into tree1, with tree2 values taking precedence"""
+    result = tree1.copy()
+    
+    for key, value in tree2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = merge_trees_overwrite(result[key], value)
+        else:
+            result[key] = value
+    
+    return result
+
 
 @flax.struct.dataclass
 class SaveState:
