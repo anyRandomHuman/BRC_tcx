@@ -1,7 +1,7 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
@@ -19,9 +19,6 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     }
     return return_dict
 
-def  compute_weight_metrics_pre_layer(intermediates):
-    return prune_single_child_nodes(jax.tree.map(_weight_metric_tree_func, intermediates))
-
 @jax.jit
 def _activation_metric_tree_func(activation):
 
@@ -37,12 +34,9 @@ def _activation_metric_tree_func(activation):
     }
     return return_dict
 
-def compute_activation_metrics_per_layer(activations_per_layer):
-    dead = jax.tree.map(_activation_metric_tree_func, activations_per_layer)
+def compute_per_layer_metrics(tree_func, activations_per_layer):
+    dead = jax.tree.map(tree_func, activations_per_layer)
     return prune_single_child_nodes(dead)
-
-
-
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -76,9 +70,10 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         #changes for computing efective rank and dead neurons
         
         if compute_per_layer_metrics:
-            param_metrics = compute_weight_metrics_pre_layer(actor_params)
-            feature_metrics = compute_activation_metrics_per_layer(intermedate)
+            param_metrics = compute_per_layer_metrics(actor_params)
+            feature_metrics = compute_per_layer_metrics(intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
+            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
             loss_info = loss_info|per_layer_metrics
 
             
@@ -180,10 +175,11 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         }
         
         if compute_per_layer_metrics:
-            effective_rank = compute_weight_metrics_pre_layer(intermedate)
-            dead_neurons = compute_activation_metrics_per_layer(intermedate)
-            per_layer_info = merge_trees_overwrite(dead_neurons, effective_rank)
-            info = info | per_layer_info
+            param_metrics = compute_per_layer_metrics(critic_params)
+            feature_metrics = compute_per_layer_metrics(intermedate)
+            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
+            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
+            loss_info = loss_info|per_layer_metrics
             
         return critic_loss, info
     new_critic, info = critic.apply_gradient(critic_loss_fn)

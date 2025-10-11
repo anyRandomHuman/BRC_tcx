@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from flax import linen as nn
 from typing import Sequence
 from jaxrl.networks import NormalTanhPolicy
-from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite
+from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree
 
 # --- 1. Define a standard Flax model ---
 class SimpleMLP(nn.Module):
@@ -66,6 +66,7 @@ def parameter_norm_per_layer(params):
 
 
 p = jax.tree.map(parameter_norm_per_layer, params)
-d = dead_neurals(intermediates)
-m = merge_trees_overwrite(d, p)
+fp = flatten_tree(params)
+# d = dead_neurals(intermediates)
+# m = merge_trees_overwrite(d, p)
 print(p)

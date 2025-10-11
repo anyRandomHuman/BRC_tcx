@@ -51,6 +51,17 @@ def merge_trees_overwrite(tree1, tree2):
     
     return result
 
+def flatten_tree(tree):
+    flattened_ls, _ = jax.tree.flatten_with_path(tree)
+    flattened_dict = {}
+    for path, value  in flattened_ls:
+        key = ''
+        for node in path:
+            key += str(node)[2:-2] + '.' # Remove "['" and "']"
+        key = key[:-1]  # Remove trailing dot   
+        flattened_dict[key] = value
+    return flattened_dict
+
 
 @flax.struct.dataclass
 class SaveState:
