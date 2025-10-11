@@ -6,8 +6,7 @@
 #SBATCH --mail-type=FAIL,END,START
 #SBATCH --signal=B:USR1@180
 
-module load  devel/cuda/12.8
-# Activate your conda environment
+module load devel/cuda/12.8
 eval "$(conda shell.bash hook)"
 conda activate py10
 export MUJOCO_GL=egl
@@ -16,15 +15,13 @@ cleanup_and_save()
 {
     echo "---"
     echo "WARNING: Time limit approaching. Triggering final save..."
-    # Tell the python script to save and exit
-    # This could be done by creating a flag file or sending another signal
-    touch "$SLURM_SUBMIT_DIR/pause.flag "
-    # Wait a bit for the python script to react and save
+    touch "$SLURM_SUBMIT_DIR/pause.flag"
     sleep 120
 }
 
 trap 'cleanup_and_save' USR1
 
-python train.py --env brc-HB_HANDS-0 
+# Pass all arguments to train.py
+python train.py "$@"
 
 conda deactivate

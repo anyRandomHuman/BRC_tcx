@@ -5,5 +5,4 @@ test_space/*
 __pycache__/
 */__pycache__/
 *.pyc
-queue.sh
 inference.sh
