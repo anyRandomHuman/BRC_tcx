@@ -68,7 +68,7 @@ def main(_):
             entity='',
             project=f'BRC',
             group=f'{FLAGS.env_names}',
-            name=f'{current_time}_{FLAGS.seed}'
+            name=f'{FLAGS.env_names}_{current_time}_{FLAGS.seed}'
         )
         
     env_names = get_environment_list(FLAGS.env_names)
