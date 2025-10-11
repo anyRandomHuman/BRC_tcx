@@ -1,5 +1,6 @@
 #!/bin/bash
-
+#SBATCH --time=00:05:00
+#SBATCH --partition=cpu
 # Base script to submit
 BASE_SCRIPT="queue.sh"
 
