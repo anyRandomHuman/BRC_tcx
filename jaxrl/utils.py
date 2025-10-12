@@ -62,6 +62,12 @@ def flatten_tree(tree):
         flattened_dict[key] = value
     return flattened_dict
 
+def remove_layer_norm_from_tree(tree):
+    for key in list(tree.keys()):
+        if 'LayerNorm' in key:
+            del tree[key]
+        elif isinstance(tree[key], dict):
+            remove_layer_norm_from_tree(tree[key])
 
 @flax.struct.dataclass
 class SaveState:

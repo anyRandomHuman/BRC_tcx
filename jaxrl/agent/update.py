@@ -1,16 +1,19 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_layer_norm_from_tree
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
+    remove_layer_norm_from_tree(weight_matrix)
+    
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
     cumsum = jnp.cumsum(sing_values)
     nuclear_norm = jnp.sum(sing_values)
     approximate_rank_threshold = 1.0 - rank_delta
     threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
     effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
+    
     pnorm = jnp.sqrt(sum(weight_matrix**2).sum())
     
     return_dict = {
@@ -21,6 +24,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 @jax.jit
 def _activation_metric_tree_func(activation):
+    remove_layer_norm_from_tree(activation)
 
     num_neurons = activation.shape[1]
     dead_neurons = jnp.all(activation == 0, axis=0).sum().item()

@@ -62,11 +62,17 @@ def parameter_norm_per_layer(params):
     norm = jnp.sqrt(sum(params**2).sum())
     return norm
 
-
+def remove_layer_norm(tree):
+    for key in list(tree.keys()):
+        if 'LayerNorm' in key:
+            del tree[key]
+        elif isinstance(tree[key], dict):
+            remove_layer_norm(tree[key])
 
 
 p = jax.tree.map(parameter_norm_per_layer, params)
 fp = flatten_tree(params)
+remove_layer_norm(p)
 # d = dead_neurals(intermediates)
 # m = merge_trees_overwrite(d, p)
 print(p)
