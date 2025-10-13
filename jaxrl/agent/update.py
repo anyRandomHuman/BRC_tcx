@@ -26,6 +26,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 def _activation_metric_tree_func(activation):
     remove_layer_norm_from_tree(activation)
 
+    activation = activation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
     dead_neurons = jnp.all(activation == 0, axis=0).sum().item()
     dead_percentage = (dead_neurons / num_neurons) * 100
