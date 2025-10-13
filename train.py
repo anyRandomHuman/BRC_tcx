@@ -117,7 +117,9 @@ def main(_):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     save_path = f'{save_dir}/brc-{FLAGS.env_names}-{FLAGS.seed}'
+    os.makedirs(save_path, exist_ok=True)
     
+
     obs = env.reset()
     start_iter = 0
     if os.path.exists(f'{save_path}/pause.txt'):
