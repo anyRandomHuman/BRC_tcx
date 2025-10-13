@@ -11,7 +11,6 @@ from jaxrl.normalizer import RewardNormalizer
 from jaxrl.logger import EpisodeRecorder
 from jaxrl.env_names import get_environment_list
 
-import tqdm
 
 FLAGS = flags.FLAGS
 
@@ -22,7 +21,7 @@ flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
-flags.DEFINE_string('env_names', 'DMC_DOGS', 'Environment name.')
+flags.DEFINE_string('env_names', 'h1-walk-v0', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
@@ -134,7 +133,7 @@ def main(_):
                 obs = sample(i, obs)
     
     pause_iter = -1
-    for i in tqdm.tqdm(range(FLAGS.max_steps - FLAGS.start_training - start_iter), desc='Training'):
+    for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         if os.path.exists(f'{submit_dir}/pause.flag'):
             pause_iter = i
             os.remove(f'{submit_dir}/pause.flag')
