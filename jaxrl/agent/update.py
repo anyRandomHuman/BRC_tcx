@@ -84,7 +84,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
             loss_info = loss_info|per_layer_metrics
 
             
-        return actor_loss, 
+        return actor_loss, loss_info
     new_actor, info = actor.apply_gradient(actor_loss_fn)
     info['actor_gnorm'] = info.pop('grad_norm')
     return new_actor, info
