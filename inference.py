@@ -2,9 +2,9 @@ import os
 from jaxrl.agent.brc_learner import BRC
 from jaxrl.envs import ParallelEnv
 from jaxrl.env_names import get_environment_list
-from jax.lax import stop_gradient
 import cv2
 import argparse
+
 
 os.environ['MUJOCO_GL'] = 'egl'
 
@@ -49,3 +49,6 @@ for i in range(renders.shape[0]):
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
         out.write(frame_bgr)
     out.release()
+    
+
+

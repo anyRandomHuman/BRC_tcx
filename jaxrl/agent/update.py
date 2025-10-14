@@ -23,7 +23,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     return return_dict
 
 @jax.jit
-def _activation_metric_tree_func(activation):
+def _activation_metric_tree_func(activation, dormant_threshold=0.01, dead_threshold=0.98):
     remove_layer_norm_from_tree(activation)
 
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
@@ -32,11 +32,16 @@ def _activation_metric_tree_func(activation):
     zero_count = jnp.sum(activation == 0, axis=0)
     dead_neurons = jnp.sum(zero_count / num_batch >= 0.98)
     dead_percentage = (dead_neurons / num_neurons) * 100
+    
+    dormant_score = activation_mean / activation_mean.mean()
+    dormant_ratio = jnp.sum(dormant_score < dormant_threshold) / num_neurons
+    
     fnorm = jnp.sqrt(sum(activation_mean**2).sum())
     
     return_dict = {
         'dead_neurons': dead_neurons,
         'dead_percentage': dead_percentage,
+        'dormant_ratio': dormant_ratio,
         'feature_norm': fnorm
     }
     return return_dict
@@ -77,8 +82,8 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         #changes for computing efective rank and dead neurons
         
         if compute_per_layer_metrics:
-            param_metrics = compute_per_layer_metrics(actor_params)
-            feature_metrics = compute_per_layer_metrics(intermedate)
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
             flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
             loss_info = loss_info|per_layer_metrics
@@ -182,8 +187,8 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         }
         
         if compute_per_layer_metrics:
-            param_metrics = compute_per_layer_metrics(critic_params)
-            feature_metrics = compute_per_layer_metrics(intermedate)
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params)
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
             flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
             loss_info = loss_info|per_layer_metrics
