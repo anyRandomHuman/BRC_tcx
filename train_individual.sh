@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --time=00:05:00
-#SBATCH --partition=cpu
+#SBATCH --time=00:01:00
+#SBATCH --partition=dev_cpu
 # Base script to submit
 BASE_SCRIPT="queue.sh"
 
@@ -9,12 +9,12 @@ TRAIN_FLAGS=(
     "--env_names=h1-walk-v0"
     "--env_names=h1-stand-v0"
     "--env_names=h1-run-v0"
-    "--env_names=h1-stair-v0"
-    "--env_names=h1-crawl-v0"
-    "--env_names=h1-pole-v0"
-    "--env_names=h1-slide-v0"
-    "--env_names=h1-hurdle-v0"
-    "--env_names=h1-maze-v0"
+#    "--env_names=h1-stair-v0"
+#    "--env_names=h1-crawl-v0"
+#    "--env_names=h1-pole-v0"
+#    "--env_names=h1-slide-v0"
+#    "--env_names=h1-hurdle-v0"
+#    "--env_names=h1-maze-v0"
 )
 
 # Submit jobs with different train.py flags
