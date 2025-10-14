@@ -23,7 +23,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     return return_dict
 
 @jax.jit
-def _activation_metric_tree_func(activation, dormant_threshold=0.2, dead_threshold=0.98):
+def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
     remove_layer_norm_from_tree(activation)
 
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
