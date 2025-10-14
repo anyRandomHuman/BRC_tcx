@@ -17,7 +17,7 @@ submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_
 checkpoint_name = parser.parse_args().ckp
 checkpoint_dir = f'{submit_dir}/checkpoints/{checkpoint_name}'
 
-env_name = str(checkpoint_name).split('-')[1]
+env_name = str(checkpoint_name)
 env_names = get_environment_list(env_name)
 num_tasks = len(env_names)
 
@@ -35,7 +35,6 @@ agent = BRC(
         **kwargs,
     )
 agent.load_inference(checkpoint_dir)
-agent = stop_gradient(agent)
 
 eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True, max_render_steps=600)
 renders = eval_stats['renders']
