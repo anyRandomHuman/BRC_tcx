@@ -23,14 +23,14 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     return return_dict
 
 @jax.jit
-def _activation_metric_tree_func(activation, dormant_threshold=0.01, dead_threshold=0.98):
+def _activation_metric_tree_func(activation, dormant_threshold=0.2, dead_threshold=0.98):
     remove_layer_norm_from_tree(activation)
 
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
     num_batch = activation.shape[0]
     zero_count = jnp.sum(activation == 0, axis=0)
-    dead_neurons = jnp.sum(zero_count / num_batch >= 0.98)
+    dead_neurons = jnp.sum(zero_count / num_batch >= dead_threshold)
     dead_percentage = (dead_neurons / num_neurons) * 100
     
     dormant_score = activation_mean / activation_mean.mean()
