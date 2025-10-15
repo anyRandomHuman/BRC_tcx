@@ -4,7 +4,7 @@ from flax import linen as nn
 from typing import Sequence
 from jaxrl.networks import NormalTanhPolicy
 from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree
-
+from jaxrl.agent import brc_learner as brc, update
 # --- 1. Define a standard Flax model ---
 class SimpleMLP(nn.Module):
     features: Sequence[int]
@@ -36,43 +36,8 @@ final_output, mutable_variables = model.apply(
 
 intermediates = mutable_variables['intermediates']
 
-def _dead_neurals_tree_func(activation, dict={}):
-    dead_neurals_info = {}
-    
-    outputs = activation
-    num_neurons = outputs.shape[1]
-    dead_neurons = jnp.all(outputs == 0, axis=0).sum().item()
-    dead_percentage = (dead_neurons / num_neurons) * 100
-    dead_neurals_info = dict|{
-        'dead_neurons': dead_neurons,
-        'total_neurons': num_neurons,
-        'dead_percentage': dead_percentage
-    }
-    return dead_neurals_info
 
-def dead_neurals(intermediates, tree=None):
-    if tree:
-        dead = jax.tree.map(_dead_neurals_tree_func, intermediates, tree)
-    else:
-        dead = jax.tree.map(_dead_neurals_tree_func, intermediates)
-        
-    return prune_single_child_nodes(dead)
-
-def parameter_norm_per_layer(params):
-    norm = jnp.sqrt(sum(params**2).sum())
-    return norm
-
-def remove_layer_norm(tree):
-    for key in list(tree.keys()):
-        if 'LayerNorm' in key:
-            del tree[key]
-        elif isinstance(tree[key], dict):
-            remove_layer_norm(tree[key])
-
-
-p = jax.tree.map(parameter_norm_per_layer, params)
-fp = flatten_tree(params)
-remove_layer_norm(p)
+p = update.compute_per_layer_metrics(update._weight_metric_tree_func, params)
 # d = dead_neurals(intermediates)
 # m = merge_trees_overwrite(d, p)
 print(p)

@@ -1,7 +1,7 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_layer_norm_from_tree
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_from_tree
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
@@ -19,6 +19,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
         'parameter_norm': pnorm
     }
     return return_dict
+
 
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
@@ -43,11 +44,13 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
-def compute_per_layer_metrics(tree_func, tree, remove_ln=True):
+def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=None):
     if remove_ln: 
-        remove_layer_norm_from_tree(tree)
-
-    dead = jax.tree.map(tree_func, tree)
+        remove_from_tree(tree)
+    if is_leaf is not None:
+        dead = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+    else:
+        dead = jax.tree.map(tree_func, tree)
     return prune_single_child_nodes(dead)
 
 @functools.partial(jax.jit, static_argnames=('multitask'))

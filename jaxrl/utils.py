@@ -6,6 +6,7 @@ import flax
 import jax
 import jax.numpy as jnp
 import optax
+from copy import deepcopy
 
 Params = flax.core.FrozenDict[str, Any]
 PRNGKey = Any
@@ -62,12 +63,15 @@ def flatten_tree(tree):
         flattened_dict[key] = value
     return flattened_dict
 
-def remove_layer_norm_from_tree(tree):
+def remove_from_tree(tree, to_remove_keys=['LayerNorm', 'bias']):
+    # tree_copy = deepcopy(tree)
     for key in list(tree.keys()):
-        if 'LayerNorm' in key:
-            del tree[key]
-        elif isinstance(tree[key], dict):
-            remove_layer_norm_from_tree(tree[key])
+        for rk in to_remove_keys:
+            if rk in key:
+                del tree[key]
+                break
+            elif isinstance(tree[key], dict):
+                remove_from_tree(tree[key])
 
 @flax.struct.dataclass
 class SaveState:
