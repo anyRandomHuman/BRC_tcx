@@ -5,8 +5,6 @@ from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_c
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
-    remove_layer_norm_from_tree(weight_matrix)
-    
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
     cumsum = jnp.cumsum(sing_values)
     nuclear_norm = jnp.sum(sing_values)
@@ -24,7 +22,6 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
-    remove_layer_norm_from_tree(activation)
 
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
@@ -46,8 +43,11 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
-def compute_per_layer_metrics(tree_func, activations_per_layer):
-    dead = jax.tree.map(tree_func, activations_per_layer)
+def compute_per_layer_metrics(tree_func, tree, remove_ln=True):
+    if remove_ln: 
+        remove_layer_norm_from_tree(tree)
+
+    dead = jax.tree.map(tree_func, tree)
     return prune_single_child_nodes(dead)
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
