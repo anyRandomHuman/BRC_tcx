@@ -58,7 +58,7 @@ def read_pause(save_dir='./checkpoints'):
 
 
 def main(_):
-    if FLAGS.testings:
+    if FLAGS.test =='True':
         flags.DEFINE_integer('seed', 0, 'Random seed.')
         flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
         flags.DEFINE_integer('eval_interval', 50, 'Eval interval.')
