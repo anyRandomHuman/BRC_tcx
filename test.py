@@ -37,7 +37,8 @@ final_output, mutable_variables = model.apply(
 intermediates = mutable_variables['intermediates']
 
 
-p = update.compute_per_layer_metrics(update._weight_metric_tree_func, params)
+# p = update.compute_per_layer_metrics(update._weight_metric_tree_func, params)
+f = update.compute_per_layer_metrics(update._activation_metric_tree_func, intermediates)
 # d = dead_neurals(intermediates)
 # m = merge_trees_overwrite(d, p)
 print(p)

@@ -24,6 +24,13 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
 
+    if not hasattr(activation, 'shape') or len(activation.shape) != 2:
+        return {
+            'dead_neurons': 0,
+            'dead_percentage': 0.0,
+            'dormant_ratio': 0.0,
+            'feature_norm': 0.0
+        }
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
     num_batch = activation.shape[0]
@@ -44,7 +51,10 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
-def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=None):
+def is_leaf_2d(x):
+    return hasattr(x, 'shape') and len(x.shape) == 2
+
+def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
         remove_from_tree(tree)
     if is_leaf is not None:
