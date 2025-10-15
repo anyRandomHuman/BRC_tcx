@@ -26,6 +26,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train.py $TEST_FLAG
+python train_copy.py $TEST_FLAG
 #--save_location "$OUTPUT_FILE"
 conda deactivate

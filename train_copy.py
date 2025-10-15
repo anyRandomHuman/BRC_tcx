@@ -14,21 +14,21 @@ from jaxrl.env_names import get_environment_list
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
+
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
-flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
-flags.DEFINE_string('env_names', 'h1-walk-v0', 'Environment name.')
-flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
+flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
+flags.DEFINE_integer('eval_interval', 5, 'Eval interval.')
+flags.DEFINE_integer('batch_size', 1, 'Mini batch size.')
+flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
+flags.DEFINE_integer('replay_buffer_size', int(5), 'Replay buffer size.')
+flags.DEFINE_integer('start_training', int(2),'Number of training steps to start training.')
+flags.DEFINE_string('env_names', 'h1-run-v0', 'Environment name.')
+flags.DEFINE_boolean('log_to_wandb', False, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
-flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
-
+flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
+flags.DEFINE_integer('width_critic', 1, 'Width of the critic network.')
+flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
 
 def read_pause(save_dir='./checkpoints'):
     if os.path.exists(f'{save_dir}/pause.txt'):
