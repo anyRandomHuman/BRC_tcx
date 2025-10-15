@@ -52,7 +52,7 @@ def merge_trees_overwrite(tree1, tree2):
     return result
 
 def flatten_tree(tree):
-    flattened_ls, _ = jax.tree.flatten_with_path(tree)
+    flattened_ls, _ = jax.tree_util.tree_flatten_with_path(tree)
     flattened_dict = {}
     for path, value  in flattened_ls:
         key = ''

@@ -29,7 +29,6 @@ flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
 
-
 def read_pause(save_dir='./checkpoints'):
     if os.path.exists(f'{save_dir}/pause.txt'):
         with open(f'{save_dir}/pause.txt', 'r') as f:
