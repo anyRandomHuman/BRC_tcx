@@ -193,7 +193,7 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
             flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
             loss_info = loss_info|flattened_per_layer_metrics
             
-        return critic_loss, info
+        return critic_loss, loss_info
     new_critic, info = critic.apply_gradient(critic_loss_fn)
     info["critic_gnorm"] = info.pop("grad_norm")
     return new_critic, info
