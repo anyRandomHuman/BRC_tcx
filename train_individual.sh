@@ -16,11 +16,15 @@ TRAIN_FLAGS=(
 #    "--env_names=h1-hurdle-v0"
 #    "--env_names=h1-maze-v0"
 )
+if [ "$1" == "--test" ]; then
+    echo "Running in test mode with reduced resources."
+    BASE_SCRIPT="queue.sh --test"
+fi
 
 # Submit jobs with different train.py flags
 for flags in "${TRAIN_FLAGS[@]}"; do
     echo "Submitting job with train.py flags: $flags"
-    sbatch $BASE_SCRIPT $flags
+    sbatch $BASE_SCRIPT $flags 
     sleep 1  # Small delay between submissions
 done
 
