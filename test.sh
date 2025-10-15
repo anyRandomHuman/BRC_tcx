@@ -12,6 +12,7 @@ eval "$(conda shell.bash hook)"
 conda activate py10
 export MUJOCO_GL=egl
 
+TEST_FLAG = "--test=True"
 cleanup_and_save()
 {
     echo "---"
@@ -25,6 +26,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train.py --test=True
+python train.py $TEST_FLAG
 #--save_location "$OUTPUT_FILE"
 conda deactivate
