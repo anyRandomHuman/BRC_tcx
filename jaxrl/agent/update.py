@@ -176,7 +176,7 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
         
-        info = {
+        loss_info = {
             "critic_loss": critic_loss,
             "q_mean": q_value_target.mean(),
             "q_min": q_value_target.min(),
