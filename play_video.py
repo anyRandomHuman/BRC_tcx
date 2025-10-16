@@ -1,8 +1,11 @@
 import cv2
 import os
+env = 'h1-crawl-v0'
+index = 0
+
 
 # Path to the video file
-video_path = "videos/h1-stair-v0/video_0.mp4"  # Replace with the actual path to your video
+video_path = f"videos/{env}/video_{index}.mp4"  # Replace with the actual path to your video
 
 # Check if the video file exists
 if not os.path.exists(video_path):

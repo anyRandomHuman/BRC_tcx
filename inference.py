@@ -13,7 +13,7 @@ episode_len = 2000
 flag = flags.FLAGS
 flags.DEFINE_string('ckp', 'HB_NOHANDS', 'Name of the environment to use.')
 
-def main():
+def main(_):
     submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
 
     checkpoint_name = flag.ckp
