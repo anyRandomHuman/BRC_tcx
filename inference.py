@@ -42,6 +42,7 @@ videos_dir = f'{submit_dir}/videos/{env_name}'
 os.makedirs(videos_dir, exist_ok=True)
 for i in range(renders.shape[0]):
     frames = renders[i]  # shape: (num_frames, H, W, C)
+    print(frames.shape)
     height, width = frames.shape[1], frames.shape[2]
     video_path = os.path.join(videos_dir, f'video_{i}.mp4')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
