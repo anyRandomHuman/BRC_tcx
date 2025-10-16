@@ -41,12 +41,16 @@ renders = eval_stats['renders']
 videos_dir = f'{submit_dir}/videos/{env_name}'
 os.makedirs(videos_dir, exist_ok=True)
 for i in range(renders.shape[0]):
-    frames = renders[i]  # shape: (num_frames, H, W, C)
-    print(frames.shape)
-    height, width = frames.shape[1], frames.shape[2]
+    frames = renders[i]  # shape: (num_frames, channels, height, width)
+    frames = frames.transpose(0, 2, 3, 1)  # Rearrange to (num_frames, height, width, channels)
+    frames = (frames * 255).astype('uint8') if frames.dtype != 'uint8' else frames
+    frames = [cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) for frame in frames]  # Convert RGB to BGR
+
+    height, width = frames[0].shape[:2]
     video_path = os.path.join(videos_dir, f'video_{i}.mp4')
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video = cv2.VideoWriter(video_path, fourcc, 30, (width, height))
+
     for frame in frames:
         video.write(frame)
     video.release()
