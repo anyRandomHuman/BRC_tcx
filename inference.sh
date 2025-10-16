@@ -10,5 +10,5 @@ eval "$(conda shell.bash hook)"
 conda activate py10
 export MUJOCO_GL=egl
 
-python inference.py $@
+python inference.py "$@"
 conda deactivate
