@@ -6,4 +6,4 @@ __pycache__/
 */__pycache__/
 *.pyc
 inference.sh
-videos/*
+
