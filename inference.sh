@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=00:20:00
+#SBATCH --time=00:10:00
 
 #SBATCH --partition=gpu_a100_short
 #SBATCH --gres=gpu:1
@@ -10,5 +10,5 @@ eval "$(conda shell.bash hook)"
 conda activate py10
 export MUJOCO_GL=egl
 
-python inference.py --ckp HB-NOHANDS
+python inference.py --ckp h1-stair-v0
 conda deactivate

@@ -8,7 +8,7 @@ import argparse
 
 os.environ['MUJOCO_GL'] = 'egl'
 
-episode_len = 200
+episode_len = 600
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS', help='Name of the environment to use.')
 
@@ -36,7 +36,7 @@ agent = BRC(
     )
 agent.load_inference(checkpoint_dir)
 
-eval_stats = env.evaluate(agent, num_episodes=episode_len, temperature=0.0, render=True, max_render_steps=600)
+eval_stats = env.evaluate(agent, num_episodes=1, temperature=0.0, render=True, max_render_steps=episode_len)
 renders = eval_stats['renders']
 videos_dir = f'{submit_dir}/videos/{env_name}'
 os.makedirs(videos_dir, exist_ok=True)
@@ -44,11 +44,12 @@ for i in range(renders.shape[0]):
     frames = renders[i]  # shape: (num_frames, H, W, C)
     height, width = frames.shape[1], frames.shape[2]
     video_path = os.path.join(videos_dir, f'video_{i}.mp4')
-    out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), 15, (width, height))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video = cv2.VideoWriter(video_path, fourcc, 30, (width, height))
     for frame in frames:
-        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR for OpenCV
-        out.write(frame_bgr)
-    out.release()
+        video.write(frame)
+    video.release()
+
     
 
 
