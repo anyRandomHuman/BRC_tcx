@@ -8,7 +8,7 @@ import argparse
 
 os.environ['MUJOCO_GL'] = 'egl'
 
-episode_len = 600
+episode_len = 2000
 parser = argparse.ArgumentParser(description="A script to demonstrate run options in Python.")
 parser.add_argument('--ckp', type=str, default='brc-HB_NOHANDS', help='Name of the environment to use.')
 

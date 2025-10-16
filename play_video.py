@@ -1,9 +1,34 @@
-import numpy as np
 import cv2
+import os
 
-video_path = r'C:\Users\51388\Videos\h1-stair-v0\video_0.mp4'
-with open(video_path, 'rb') as f:
-    video_data = f.read()
-    mat = cv2.imdecode(np.frombuffer(video_data, np.uint8), cv2.IMREAD_COLOR)
-    cv2.imshow('Video', mat)
-    cv2.waitKey(0)
+# Path to the video file
+video_path = "videos/h1-stair-v0/video_0.mp4"  # Replace with the actual path to your video
+
+# Check if the video file exists
+if not os.path.exists(video_path):
+    print(f"Error: Video file not found at {video_path}")
+    exit(1)
+
+# Open the video file
+video = cv2.VideoCapture(video_path)
+
+if not video.isOpened():
+    print("Error: Could not open video.")
+    exit(1)
+
+# Display the video frame by frame
+while True:
+    ret, frame = video.read()
+    if not ret:
+        break  # Exit the loop when the video ends
+
+    # Display the frame
+    cv2.imshow("Video", frame)
+
+    # Wait for 30ms and check if the user presses the 'q' key to quit
+    if cv2.waitKey(30) & 0xFF == ord('q'):
+        break
+
+# Release the video capture object and close the display window
+video.release()
+cv2.destroyAllWindows()
