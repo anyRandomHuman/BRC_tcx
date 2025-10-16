@@ -17,6 +17,8 @@ if not video.isOpened():
     exit(1)
 
 # Display the video frame by frame
+frames= []
+
 while True:
     ret, frame = video.read()
     if not ret:
