@@ -1,7 +1,7 @@
 import cv2
 import os
-env = 'h1-crawl-v0'
-index = 0
+env = 'HB_NOHANDS'
+index = 8
 
 
 # Path to the video file
