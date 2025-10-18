@@ -125,7 +125,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     grad_norm = jax.vmap(tree_norm)(grad).mean()
     info['grad_norm'] = grad_norm
     info['entropy'] = entropy.mean()
-    conflict = compute_grad_conflict(grad)
+    conflicts = compute_grad_conflict(grad)
+    info = info|conflicts
     
     actor_loss, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
@@ -136,6 +137,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     actor_pnorm = tree_norm(actor.params)
     info['actor_pnorm'] = actor_pnorm
+    info['actor_loss'] = actor_loss
     
     return info
 
