@@ -58,7 +58,7 @@ def _grad_conflict_tree_func(grads):
         grads1 = grads[i]
         for j in range(i+1, len(grads)):
             grads2 = grads[j]
-            cosine_similaritiy += jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
+            cosine_similaritiy = jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
             conflit += cosine_similaritiy < 0
     return conflit / (len(grads) * (len(grads) - 1) / 2)
 
@@ -75,7 +75,12 @@ def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
-    return flatten_tree(prune_single_child_nodes(conflict_tree))
+    fc = flatten_tree(prune_single_child_nodes(conflict_tree))
+    import os
+    with os.open(r'/pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx/conflict.txt', 'a') as f:
+        f.write(str(grads) + '\n')
+        f.write(str(fc) + '\n')
+    return fc
     
 def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
