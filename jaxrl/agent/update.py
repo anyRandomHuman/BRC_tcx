@@ -201,7 +201,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         return critic_loss
     info = {}
     
-    grad_fn = jax.vmap(jax.grad(critic_loss_fn))
+    grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids)
     grads = merge_trees(grad_trees)
     conflicts = compute_grad_conflict(grads)
