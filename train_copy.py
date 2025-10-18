@@ -11,8 +11,8 @@ from jaxrl.normalizer import RewardNormalizer
 from jaxrl.logger import EpisodeRecorder
 from jaxrl.env_names import get_environment_list
 
-from OpenGL import EGL
-EGL.eglInitialize(EGL.eglGetDisplay(EGL.EGL_DEFAULT_DISPLAY), None, None)
+# from OpenGL import EGL
+# EGL.eglInitialize(EGL.eglGetDisplay(EGL.EGL_DEFAULT_DISPLAY), None, None)
 
 
 FLAGS = flags.FLAGS
