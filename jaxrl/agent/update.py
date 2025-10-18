@@ -51,9 +51,10 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
-@jax.jit
+# @jax.jit
 def _grad_conflict_tree_func(grads):
     conflit = 0
+    print(grads.shape)
     for i in range(len(grads)):
         grads1 = grads[i]
         for j in range(i+1, len(grads)):
@@ -76,10 +77,6 @@ def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
     fc = flatten_tree(prune_single_child_nodes(conflict_tree))
-    import os
-    with os.open(r'/pfs/data6/home/ka/ka_anthropomatik/ka_et4232/workspace/BRC_tcx/conflict.txt', 'a') as f:
-        f.write(str(grads) + '\n')
-        f.write(str(fc) + '\n')
     return fc
     
 def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
