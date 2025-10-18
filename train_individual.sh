@@ -6,8 +6,8 @@ BASE_SCRIPT="test.sh"
 
 # Array of flag sets for train.py (not SLURM flags)
 TRAIN_FLAGS=(
-    '--env_names=h1hand-sit_simple-v0',
-    # '--env_names=h1hand-sit_hard-v0', 
+#    '--env_names=h1hand-sit_simple-v0',
+ #   '--env_names=h1hand-sit_hard-v0', 
     # '--env_names=h1hand-balance_simple-v0', 
     # '--env_names=h1hand-balance_hard-v0', 
     # '--env_names=h1hand-reach-v0', 
@@ -15,8 +15,8 @@ TRAIN_FLAGS=(
     # '--env_names=h1hand-window-v0', 
     # '--env_names=h1hand-insert_small-v0', 
     # '--env_names=h1hand-insert_normal-v0',
-    # '--env_names=h1hand-bookshelf_simple-v0', 
-    # '--env_names=h1hand-bookshelf_hard-v0', 
+    '--env_names=h1hand-bookshelf_simple-v0', 
+    '--env_names=h1hand-bookshelf_hard-v0', 
 )
 if [ "$1" == "--test" ]; then
     echo "Running in test mode with reduced resources."
