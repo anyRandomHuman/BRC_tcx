@@ -26,10 +26,10 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
     if not hasattr(activation, 'shape') or len(activation.shape) != 2:
         return {
-            'dead_neurons': 0,
-            'dead_percentage': 0.0,
-            'dormant_ratio': 0.0,
-            'feature_norm': 0.0
+            'dead_neurons': -1,
+            'dead_percentage': -1.0,
+            'dormant_ratio': -1.0,
+            'feature_norm': -1.0
         }
     activation_mean = activation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
@@ -51,7 +51,7 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
-# @jax.jit
+@jax.jit
 def _grad_conflict_tree_func(grads):
     conflit = 0
     print(grads.shape)
@@ -96,21 +96,25 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
         inputs = jnp.concatenate((inputs, task_embeddings), axis=-1)
     return inputs
 
-def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, num_bins: int, v_max: float, multitask: bool, compute_per_layer=False):
+def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, 
+                 num_bins: int, v_max: float, multitask: bool, evaluate=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
     def actor_loss_fn(actor_params: Params):
         #changes for computing efective rank and dead neurons
-        if compute_per_layer:
+        if evaluate:
             dist, intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)        
         else:
             dist = actor.apply({'params': actor_params}, inputs)
+            
         actions, log_probs = dist.sample_and_log_prob(seed=key)
         q_logits = critic(batch.observations, actions, batch.task_ids)
         q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0)
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
-        q_values = (bin_values * q_probs).sum(-1)    
+        q_values = (bin_values * q_probs).sum(-1)
         actor_loss = (log_probs * temp().mean() - q_values).mean()
-        
+        if evaluate:
+            sq_values = (bin_values * q_probs).sum(-1)
+            actor_loss = (log_probs * temp().mean() - q_values).mean()
         loss_info = {
             'actor_loss': actor_loss,
             'entropy': -log_probs.mean(),
@@ -119,7 +123,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         
         #changes for computing efective rank and dead neurons
         
-        if compute_per_layer:
+        if evaluate:
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
@@ -127,10 +131,10 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
 
             
         return actor_loss, loss_info
+        
     new_actor, info = actor.apply_gradient(actor_loss_fn)
     info['actor_gnorm'] = info.pop('grad_norm')
-    conflict = compute_grad_conflict(info['grads'])
-    info = info|conflict
+
     return new_actor, info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
@@ -213,8 +217,8 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         else:
             q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
+
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
-        
         loss_info = {
             "critic_loss": critic_loss,
             "q_mean": q_value_target.mean(),
