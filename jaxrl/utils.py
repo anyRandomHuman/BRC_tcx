@@ -118,6 +118,7 @@ class Model:
         grads, info = grad_fn(self.params)
         grad_norm = tree_norm(grads)
         info['grad_norm'] = grad_norm
+        info['grads'] = grads
 
         updates, new_opt_state = self.tx.update(grads, self.opt_state,
                                                 self.params)
@@ -144,18 +145,3 @@ class Model:
                 SaveState(params=self.params, opt_state=self.opt_state), contents
             )
         return self.replace(params=saved_state.params, opt_state=saved_state.opt_state)
-    
-    def apply_gradient_log_gradient(self, loss_fn):
-        grad_fn = jax.grad(loss_fn, has_aux=True)
-        grads, info = grad_fn(self.params)
-        grad_norm = tree_norm(grads)
-        info['grad_norm'] = grad_norm
-        info['grads'] = grads
-
-        updates, new_opt_state = self.tx.update(grads, self.opt_state,
-                                                self.params)
-        new_params = optax.apply_updates(self.params, updates)
-
-        return self.replace(step=self.step + 1,
-                            params=new_params,
-                            opt_state=new_opt_state), info

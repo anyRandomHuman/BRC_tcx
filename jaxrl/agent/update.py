@@ -60,14 +60,16 @@ def _grad_conflict_tree_func(grads1, grads2):
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
-def compute_grad_conflict(grads1, grads2, remove_ln=True, is_leaf=is_leaf_2d):
+def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
+    print(grads)
+    print(type(grads))
+    
     if remove_ln: 
-        remove_from_tree(grads1)
-        remove_from_tree(grads2)
+        remove_from_tree(grads)
     if is_leaf is not None:
-        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads1, grads2, is_leaf=is_leaf)
+        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     else:
-        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads1, grads2)
+        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
     return flatten_tree(prune_single_child_nodes(conflict_tree))
     
 def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
@@ -119,10 +121,9 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
             
         return actor_loss, loss_info
     new_actor, info = actor.apply_gradient(actor_loss_fn)
-
-    conflict_tree = compute_grad_conflict()
-    
     info['actor_gnorm'] = info.pop('grad_norm')
+    conflict = compute_grad_conflict(info['gradient'])
+    info = info|conflict
     return new_actor, info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
