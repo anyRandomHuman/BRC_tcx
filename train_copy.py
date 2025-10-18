@@ -26,7 +26,7 @@ flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(5), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(2),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'h1-run-v0', 'Environment name.')
-flags.DEFINE_boolean('log_to_wandb', False, 'Whether to log to wandb.')
+flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
@@ -54,7 +54,7 @@ def main(_):
         wandb.init(
             config=FLAGS,
             entity='',
-            project=f'BRC',
+            project=f'BRC_test',
             group=f'{FLAGS.env_names}',
             name=f'{FLAGS.env_names}_{current_time}_{FLAGS.seed}'
         )
