@@ -106,12 +106,12 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         else:
             dist = actor.apply({'params': actor_params}, inputs)
             
-        actions, log_probs = dist.sample_and_log_prob(seed=key)
-        q_logits = critic(batch.observations, actions, batch.task_ids)
-        q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0)
+        actions, log_probs = dist.sample_and_log_prob(seed=key) # #action
+        q_logits = critic(batch.observations, actions, batch.task_ids) #batch, #action?, #value bins
+        q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0) #action?, #value bins
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
-        q_values = (bin_values * q_probs).sum(-1)
-        actor_loss = (log_probs * temp().mean() - q_values).mean()
+        q_values = (bin_values * q_probs).sum(-1) #action?
+        actor_loss = (log_probs * temp().mean() - q_values).mean() #1
 
         loss_info = {
             'actor_loss': actor_loss,
@@ -122,9 +122,12 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         #changes for computing efective rank and dead neurons
         
         if evaluate:
-            sq_values = (bin_values * q_probs).sum(-1)
-            sactor_loss = (log_probs * temp().mean() - q_values)
-            print(f'q_logits shape: {q_logits.shape}')
+            sq_probs = jax.nn.softmax(q_logits, axis=-1) #batch, #action?, #value bins
+            bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None, None, :] 
+            sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
+            
+            sactor_loss = (log_probs * temp().mean()[None, :]  - sq_values)
+            print(f'log_probs shape: {log_probs.shape}')
             print(f'sactor_loss shape: {sactor_loss.shape}')
             
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
