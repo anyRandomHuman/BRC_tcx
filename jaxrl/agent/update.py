@@ -122,7 +122,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         return actor_loss, loss_info
     new_actor, info = actor.apply_gradient(actor_loss_fn)
     info['actor_gnorm'] = info.pop('grad_norm')
-    conflict = compute_grad_conflict(info['gradient'])
+    conflict = compute_grad_conflict(info['grads'])
     info = info|conflict
     return new_actor, info
 
