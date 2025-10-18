@@ -112,9 +112,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
         q_values = (bin_values * q_probs).sum(-1)
         actor_loss = (log_probs * temp().mean() - q_values).mean()
-        if evaluate:
-            sq_values = (bin_values * q_probs).sum(-1)
-            actor_loss = (log_probs * temp().mean() - q_values).mean()
+
         loss_info = {
             'actor_loss': actor_loss,
             'entropy': -log_probs.mean(),
@@ -124,10 +122,17 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         #changes for computing efective rank and dead neurons
         
         if evaluate:
+            sq_values = (bin_values * q_probs).sum(-1)
+            sactor_loss = (log_probs * temp().mean() - q_values)
+            print(f'q_logits shape: {q_logits.shape}')
+            print(f'sactor_loss shape: {sactor_loss.shape}')
+            
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
             loss_info = loss_info|per_layer_metrics
+            
+            return sactor_loss, loss_info
 
             
         return actor_loss, loss_info
