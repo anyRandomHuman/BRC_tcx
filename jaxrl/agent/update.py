@@ -126,9 +126,11 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
             bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None, None, :] 
             sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
             
-            sactor_loss = (log_probs * temp().mean()[None, :]  - sq_values)
             print(f'log_probs shape: {log_probs.shape}')
+            print(f'temp shape: {temp().shape}')
+            sactor_loss = ((log_probs * temp().mean())[None, :]  - sq_values)
             print(f'sactor_loss shape: {sactor_loss.shape}')
+
             
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
