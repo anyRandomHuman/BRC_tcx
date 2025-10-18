@@ -1,8 +1,9 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_from_tree
-
+from jax.flatten_util import ravel_pytree
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_from_tree, merge_trees
+import optax
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
@@ -53,23 +54,19 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
 @jax.jit
 def _grad_conflict_tree_func(grads):
-    conflit = 0
     print(grads.shape)
-    for i in range(len(grads)):
-        grads1 = grads[i]
-        for j in range(i+1, len(grads)):
-            grads2 = grads[j]
-            cosine_similaritiy = jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
-            conflit += cosine_similaritiy < 0
-    return conflit / (len(grads) * (len(grads) - 1) / 2)
+    fgrads = grads.reshape(grads.shape[0], -1) #shape (b, n*m)
+    print(fgrads.shape)
+    grads1 = fgrads[0][None,:] #1,n*m
+    norm_prods = (jnp.linalg.norm(grads1) * jax.vmap(jnp.linalg.norm)(fgrads) + 1e-8) #b,1
+    cosine_similaritiy = grads1 * fgrads / norm_prods
+    conflit += cosine_similaritiy < 0
+    return conflit / fgrads.shape[0]
 
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
 def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
-    print(grads)
-    print(type(grads))
-    
     if remove_ln: 
         remove_from_tree(grads)
     if is_leaf is not None:
@@ -95,19 +92,62 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
         task_embeddings = critic(None, None, task_ids, True)
         inputs = jnp.concatenate((inputs, task_embeddings), axis=-1)
     return inputs
+def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, 
+                 num_bins: int, v_max: float, multitask: bool):
+    inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
+    def actor_loss_fn(actor_params: Params, observations):
+        #changes for computing efective rank and dead neurons
+        dist = actor.apply({'params': actor_params}, inputs)        
+            
+        # actions, log_probs = dist.sample_and_log_prob(seed=key) # #action
+        # q_logits = critic(observations, actions, batch.task_ids) #batch, #action?, #value bins
+        # sq_probs = jax.nn.softmax(q_logits, axis=-1) #batch, #action?, #value bins
+
+        # bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None, None, :] 
+        # sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
+        # sactor_loss = ((log_probs * temp().mean())[None, :]  - sq_values).mean(axis=1)
+        
+        actions, log_probs = dist.sample_and_log_prob(seed=key) # #action
+        q_logits = critic(observations, actions, batch.task_ids) #batch, #action?, #value bins
+        q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0) #action?, #value bins
+        bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
+        q_values = (bin_values * q_probs).sum(-1) #action?
+        actor_loss = (log_probs * temp().mean() - q_values).mean() #1
+            
+        return actor_loss, jnp.array([-log_probs.mean()])
+    
+    info = {}
+    
+    grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True))
+    grad_trees, entropy = grad_fn(actor.params, batch.observations)
+    
+    grad = merge_trees(grad_trees)
+    grad_norm = jax.vmap(tree_norm)(grad).mean()
+    info['grad_norm'] = grad_norm
+    info['entropy'] = entropy.mean()
+    conflict = compute_grad_conflict(grad)
+    
+    actor_loss, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
+    
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor.params)
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
+    info = info|per_layer_metrics
+
+    actor_pnorm = tree_norm(actor.params)
+    info['actor_pnorm'] = actor_pnorm
+    
+    return info
 
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, 
                  num_bins: int, v_max: float, multitask: bool, evaluate=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
-    def actor_loss_fn(actor_params: Params):
+    def actor_loss_fn(actor_params: Params, observations):
         #changes for computing efective rank and dead neurons
-        if evaluate:
-            dist, intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)        
-        else:
-            dist = actor.apply({'params': actor_params}, inputs)
+        dist = actor.apply({'params': actor_params}, inputs)
             
         actions, log_probs = dist.sample_and_log_prob(seed=key) # #action
-        q_logits = critic(batch.observations, actions, batch.task_ids) #batch, #action?, #value bins
+        q_logits = critic(observations, actions, batch.task_ids) #batch, #action?, #value bins
         q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0) #action?, #value bins
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
         q_values = (bin_values * q_probs).sum(-1) #action?
@@ -118,31 +158,10 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
             'entropy': -log_probs.mean(),
             'actor_pnorm': tree_norm(actor_params),
         }
-        
-        #changes for computing efective rank and dead neurons
-        
-        if evaluate:
-            sq_probs = jax.nn.softmax(q_logits, axis=-1) #batch, #action?, #value bins
-            bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None, None, :] 
-            sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
-            
-            print(f'log_probs shape: {log_probs.shape}')
-            print(f'temp shape: {temp().shape}')
-            sactor_loss = ((log_probs * temp().mean())[None, :]  - sq_values)
-            print(f'sactor_loss shape: {sactor_loss.shape}')
-
-            
-            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
-            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            loss_info = loss_info|per_layer_metrics
-            
-            return sactor_loss, loss_info
-
             
         return actor_loss, loss_info
-        
-    new_actor, info = actor.apply_gradient(actor_loss_fn)
+
+    new_actor, info = actor.apply_gradient(actor_loss_fn, batch.observations)
     info['actor_gnorm'] = info.pop('grad_norm')
 
     return new_actor, info

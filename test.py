@@ -41,5 +41,9 @@ import numpy as np
 # b = rb.sample(3, 1)
 # update.update_actor(key, model, critic, temp, b, 101, 10.0, False, False)
 
-grad_fn = jax.grad(jnp.tanh)
-print(grad_fn(jnp.array((0.3,0.2))))
+# grad_fn = jax.grad(jnp.tanh)
+# a = grad_fn(jnp.array((0.3,0.2)))
+fn = jax.vmap(lambda x :x)
+a = fn(jnp.array([1,2]))
+
+print(type(a))

@@ -41,15 +41,24 @@ def prune_single_child_nodes(tree):
         return tuple(pruned_children)
 
 def merge_trees_overwrite(tree1, tree2):
-    """Merge tree2 into tree1, with tree2 values taking precedence"""
+    """Merge tree2 into tree1, with tree2 values taking precedence, also merge list"""
     result = tree1.copy()
     
     for key, value in tree2.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = merge_trees_overwrite(result[key], value)
+        elif key in result and isinstance(result[key], jax.Array) and isinstance(value, jax.Array) \
+            and result[key].shape[-1] == value.shape[-1]:
+            result[key] = jnp.concatenate(result[key], value, axis=-1)
         else:
             result[key] = value
     
+    return result
+
+def merge_trees(tree_ls):
+    result = {}
+    for tree in tree_ls:
+        merge_trees_overwrite(result, tree)
     return result
 
 def flatten_tree(tree):
@@ -113,9 +122,9 @@ class Model:
     def apply(self, *args, **kwargs):
         return self.apply_fn.apply(*args, **kwargs)
 
-    def apply_gradient(self, loss_fn):
+    def apply_gradient(self, loss_fn, *args, **kwargs):
         grad_fn = jax.grad(loss_fn, has_aux=True)
-        grads, info = grad_fn(self.params)
+        grads, info = grad_fn(self.params, *args, **kwargs)
         grad_norm = tree_norm(grads)
         info['grad_norm'] = grad_norm
         info['grads'] = grads
