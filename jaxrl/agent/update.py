@@ -52,10 +52,15 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     return return_dict
 
 @jax.jit
-def _grad_conflict_tree_func(grads1, grads2):
-    cosine_similaritiy = jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
-    conflit = cosine_similaritiy < 0
-    return conflit
+def _grad_conflict_tree_func(grads):
+    conflit = 0
+    for i in range(len(grads)):
+        grads1 = grads[i]
+        for j in range(i+1, len(grads)):
+            grads2 = grads[j]
+            cosine_similaritiy += jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
+            conflit += cosine_similaritiy < 0
+    return conflit / (len(grads) * (len(grads) - 1) / 2)
 
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
