@@ -189,12 +189,12 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     upper_mask = jax.nn.one_hot(upper.reshape(-1), num_bins).reshape((-1, num_bins, num_bins))
     lower_values = (next_q_probs * (upper + (lower == upper).astype(jnp.float32) - target_bin_values))[..., None]        
     upper_values = (next_q_probs * (target_bin_values - lower))[..., None] #shape (num_critic, batch_size, num_bins, 1)
-    target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1)) #shape (num_critic, num_bins)
+    target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1)) #shape (num_critic, num_bins) (1, 32,101)
     q_value_target = (bin_values * target_probs).sum(-1) #
 
     def critic_loss_fn(critic_params: Params, observations, actions, task_ids):
         q_logits, intermedate = critic.apply({'params': critic_params}, observations, actions, task_ids, capture_intermediates=True, mutable=True) #shape (batch_size, num_critic, num_bins)
-        q_logprobs = jax.nn.log_softmax(q_logits, axis=-1) #shape (batch_size, num_critic, num_bins)
+        q_logprobs = jax.nn.log_softmax(q_logits, axis=-1) #shape (batch_size, num_bins)
 
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
             
