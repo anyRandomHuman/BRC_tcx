@@ -1,84 +1,44 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 # from flax import linen as nn
 # from typing import Sequence
-# from jaxrl.networks import NormalTanhPolicy
-# from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree
-# import jaxrl.agent.update as update
-# from OpenGL import EGL
-# EGL.eglInitialize(EGL.eglGetDisplay(EGL.EGL_DEFAULT_DISPLAY), None, None)
-# # --- 1. Define a standard Flax model ---
-# class SimpleMLP(nn.Module):
-#     features: Sequence[int]
+from jaxrl.networks import NormalTanhPolicy, DoubleCriticTest, Temperature
+from jaxrl.utils import tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, Batch, Model
+# from jaxrl.agent.brc_learner import BRC
+import jaxrl.agent.update as update
+from jaxrl.replay_buffer import ParallelReplayBuffer
+import gymnasium as gym
 
-#     @nn.compact
-#     def __call__(self, x):
-#         for i, feat in enumerate(self.features):
-#             x = nn.Dense(features=feat, name=f'dense_{i}')(x)
-#             # We will capture the output of this ReLU activation
-#             x = nn.relu(x)
-#         return x
+key = jax.random.PRNGKey(0)
+# Use a representative batch of data
+input_data = jnp.zeros((16, 32)) # Batch size of 128
 
-# # --- 2. Initialize model and data ---
-# key = jax.random.PRNGKey(0)
-# # Use a representative batch of data
-# input_data = jnp.zeros((16, 32)) # Batch size of 128
+# model = SimpleMLP(features=[16, 8, 4])
+model = NormalTanhPolicy(action_dim=2, hidden_dims=4, depth=2)
+critic = DoubleCriticTest(num_tasks=1, embedding_size=4, ensemble_size=2, hidden_dims=4, depth=2, output_nodes=101, multitask=False)
+temp = Temperature()
+# Initialize the model parameters
+params = model.init(key, input_data)['params']
 
-# # model = SimpleMLP(features=[16, 8, 4])
-# model = NormalTanhPolicy(action_dim=2, hidden_dims=4, depth=2)
-# # Initialize the model parameters
-# params = model.init(key, input_data)['params']
+final_output, mutable_variables = model.apply(
+    {'params': params}, 
+    input_data,
+    capture_intermediates=True,
+    mutable=True # We need mutable=True to allow intermediates to be stored
+)
 
-# final_output, mutable_variables = model.apply(
-#     {'params': params}, 
-#     input_data,
-#     capture_intermediates=True,
-#     mutable=True # We need mutable=True to allow intermediates to be stored
-# )
+intermediates = mutable_variables['intermediates']
 
-# intermediates = mutable_variables['intermediates']
-
-# def _dead_neurals_tree_func(activation, dict={}):
-#     dead_neurals_info = {}
-    
-#     outputs = activation
-#     num_neurons = outputs.shape[1]
-#     dead_neurons = jnp.all(outputs == 0, axis=0).sum().item()
-#     dead_percentage = (dead_neurons / num_neurons) * 100
-#     dead_neurals_info = dict|{
-#         'dead_neurons': dead_neurons,
-#         'total_neurons': num_neurons,
-#         'dead_percentage': dead_percentage
-#     }
-#     return dead_neurals_info
-
-# def dead_neurals(intermediates, tree=None):
-#     if tree:
-#         dead = jax.tree.map(_dead_neurals_tree_func, intermediates, tree)
-#     else:
-#         dead = jax.tree.map(_dead_neurals_tree_func, intermediates)
-        
-#     return prune_single_child_nodes(dead)
-
-# def parameter_norm_per_layer(params):
-#     norm = jnp.sqrt(sum(params**2).sum())
-#     return norm
-
-# def remove_layer_norm(tree):
-#     for key in list(tree.keys()):
-#         if 'LayerNorm' in key:
-#             del tree[key]
-#         elif isinstance(tree[key], dict):
-#             remove_layer_norm(tree[key])
+low = np.zeros(51)
+high = np.ones(51)
+box = gym.spaces.Box(low=low, high=high)
+# brc = BRC(0, jnp.zeros(1), jnp.zeros(1), 1, width_critic=2, width_actor=2)
+# b = Batch(observations=obs, actions=jnp.zeros(1), rewards=jnp.zeros(1), masks=jnp.ones(1), next_observations=obs, task_ids=jnp.array([0]))
+rb = ParallelReplayBuffer(observation_space=box, action_dim=19, capacity=250000, num_tasks=1)
+rb.n_parts = 1
+rb.load(r'./checkpoints/brc-HB_NOHANDS')
+b = rb.sample(3, 1)
+update.update_actor(key, model, critic, temp, b, 101, 10.0, False, False)
 
 
-# p = jax.tree.map(parameter_norm_per_layer, params)
-# fp = flatten_tree(params)
-# remove_layer_norm(p)
-# # d = dead_neurals(intermediates)
-# # m = merge_trees_overwrite(d, p)
-# print(p)
-
-with open('/home/i53/student/chenxin/workspace/video_0.mp4', 'r') as f:
-    data = f.read()
-    print(data)

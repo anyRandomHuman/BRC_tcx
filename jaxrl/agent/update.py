@@ -51,17 +51,33 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     }
     return return_dict
 
+@jax.jit
+def _grad_conflict_tree_func(grads1, grads2):
+    cosine_similaritiy = jnp.sum(jnp.einsum('bnm,bnl->bml', grads1, grads2)) / (jnp.linalg.norm(grads1) * jnp.linalg.norm(grads2) + 1e-8)
+    conflit = cosine_similaritiy < 0
+    return conflit
+
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
+def compute_grad_conflict(grads1, grads2, remove_ln=True, is_leaf=is_leaf_2d):
+    if remove_ln: 
+        remove_from_tree(grads1)
+        remove_from_tree(grads2)
+    if is_leaf is not None:
+        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads1, grads2, is_leaf=is_leaf)
+    else:
+        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads1, grads2)
+    return flatten_tree(prune_single_child_nodes(conflict_tree))
+    
 def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
         remove_from_tree(tree)
     if is_leaf is not None:
-        dead = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+        return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
     else:
-        dead = jax.tree.map(tree_func, tree)
-    return prune_single_child_nodes(dead)
+        return_tree = jax.tree.map(tree_func, tree)
+    return flatten_tree(prune_single_child_nodes(return_tree))
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -98,12 +114,14 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
-            loss_info = loss_info|flattened_per_layer_metrics
+            loss_info = loss_info|per_layer_metrics
 
             
         return actor_loss, loss_info
     new_actor, info = actor.apply_gradient(actor_loss_fn)
+
+    conflict_tree = compute_grad_conflict()
+    
     info['actor_gnorm'] = info.pop('grad_norm')
     return new_actor, info
 
@@ -203,8 +221,7 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
-            loss_info = loss_info|flattened_per_layer_metrics
+            loss_info = loss_info|per_layer_metrics
             
         return critic_loss, loss_info
     new_critic, info = critic.apply_gradient(critic_loss_fn)
