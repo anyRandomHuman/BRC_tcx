@@ -30,7 +30,7 @@ flags.DEFINE_boolean('log_to_wandb', False, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 1, 'Width of the critic network.')
+flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
 flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
 
 def read_pause(save_dir='./checkpoints'):
