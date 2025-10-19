@@ -111,7 +111,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         # sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
         # sactor_loss = ((log_probs * temp().mean())[None, :]  - sq_values).mean(axis=1)
         
-        q_logits = critic(observation, actor_input, task_id) #batch, #action?, #value bins
+        q_logits = critic(observation, actions, task_id) #batch, #action?, #value bins
         q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0) #action?, #value bins
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
         q_values = (bin_values * q_probs).sum(-1) #action?
