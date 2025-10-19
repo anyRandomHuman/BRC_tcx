@@ -210,22 +210,22 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
     conflicts = compute_grad_conflict(grad_trees)
     
-    _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
-    # q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
-    # q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
-    # critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
+    # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
+    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
+    q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
+    critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
     
-    # info |= {
-    #     "critic_loss": critic_loss,
-    #     "q_mean": q_value_target.mean(),
-    #     "q_min": q_value_target.min(),
-    #     "q_max": q_value_target.max(),
-    #     "r": batch.rewards.mean(),
-    #     "critic_pnorm": tree_norm(critic.params),
-    # }
-    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params)
-    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-    # info |= merge_trees_overwrite(feature_metrics, param_metrics)
+    info |= {
+        "critic_loss": critic_loss,
+        "q_mean": q_value_target.mean(),
+        "q_min": q_value_target.min(),
+        "q_max": q_value_target.max(),
+        "r": batch.rewards.mean(),
+        "critic_pnorm": tree_norm(critic.params),
+    }
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params)
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    info |= merge_trees_overwrite(feature_metrics, param_metrics)
     
     return info|conflicts
 
