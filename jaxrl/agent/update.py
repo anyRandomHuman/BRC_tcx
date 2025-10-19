@@ -4,6 +4,7 @@ import jax
 from jax.flatten_util import ravel_pytree
 from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, flatten_tree, remove_from_tree, merge_trees
 import optax
+from copy import deepcopy
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
@@ -116,8 +117,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
         q_values = (bin_values * q_probs).sum(-1) #action?
         actor_loss = (log_probs * temp().mean() - q_values).mean() #1
-            
-        return actor_loss, jnp.array([-log_probs.mean()])
+        
+        return actor_loss, -log_probs.mean()
     
     info = {}
     
@@ -133,7 +134,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     
     actor_loss, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor.params)
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
     per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
     info = info|per_layer_metrics
@@ -225,7 +226,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params)
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params))
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
     info |= merge_trees_overwrite(feature_metrics, param_metrics)
     
