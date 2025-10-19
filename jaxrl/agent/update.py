@@ -139,6 +139,9 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     
     params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
     features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    for key in features_info.keys():
+        if 'flat' in key:
+            features_info.pop(key)
     info |= params_info
     info |= features_info
     print(f'features_info: {features_info}')
