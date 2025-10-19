@@ -59,8 +59,8 @@ def _grad_conflict_tree_func(grads):
     fgrads = grads.reshape(grads.shape[0], grads.shape[1], -1) #shape (b, 2, n*m)
     grads1 = fgrads[0] #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
-    cosine_similaritiy = grads1 * fgrads
-    conflict_count += cosine_similaritiy < 0
+    unnormed_cosine_similaritiy = grads1 * fgrads
+    conflict_count += unnormed_cosine_similaritiy < 0
     return {'conflict_rate':conflict_count / grads.shape[0]}
 
 def is_leaf_2d(x):
@@ -205,31 +205,29 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         critic_loss = -(target_prob[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
             
         return critic_loss
-    info = {}
     
     grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
     conflicts = compute_grad_conflict(grad_trees)
-    info |= conflicts
     
-
-    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
-    q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
-    critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
+    _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
+    # q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
+    # q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
+    # critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
     
-    info |= {
-        "critic_loss": critic_loss,
-        "q_mean": q_value_target.mean(),
-        "q_min": q_value_target.min(),
-        "q_max": q_value_target.max(),
-        "r": batch.rewards.mean(),
-        "critic_pnorm": tree_norm(critic.params),
-    }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params)
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-    info |= merge_trees_overwrite(feature_metrics, param_metrics)
+    # info |= {
+    #     "critic_loss": critic_loss,
+    #     "q_mean": q_value_target.mean(),
+    #     "q_min": q_value_target.min(),
+    #     "q_max": q_value_target.max(),
+    #     "r": batch.rewards.mean(),
+    #     "critic_pnorm": tree_norm(critic.params),
+    # }
+    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params)
+    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    # info |= merge_trees_overwrite(feature_metrics, param_metrics)
     
-    return info
+    return info|conflicts
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
            temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
