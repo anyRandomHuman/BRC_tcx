@@ -25,17 +25,18 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
-    sactivation = jnp.squeeze(activation)
-    
-    if not hasattr(activation, 'shape') and not len(sactivation.shape)==3:
+    #shape (critic, in, out) (in, out)
+    if not hasattr(activation, 'shape') or not len(sactivation.shape)== 2 or not len(sactivation.shape)== 3:
         return {
             'dead_neurons': -1,
             'dead_percentage': -1.0,
             'dormant_ratio': -1.0,
             'feature_norm': -1.0
         }
-    print(activation.shape)
-    print(sactivation.shape)
+    sactivation = jnp.squeeze(activation)
+    
+    if len(sactivation.shape) == 3:
+        sactivation = sactivation.mean(axis=0)
     
     activation_mean = sactivation.mean(axis=0)  #mean over batch dimension
     num_neurons = sactivation.shape[1]
@@ -136,9 +137,6 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['entropy'] = loss_entropy[:,0].mean()
     conflicts = compute_grad_conflict(grad)
     info = info|conflicts
-    
-    print(f'conflict info: {info}')
-
     _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
     params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
@@ -148,7 +146,6 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
             features_info.pop(key)
     info |= params_info
     info |= features_info
-    print(f'features_info: {features_info}')
 
     actor_pnorm = tree_norm(actor.params)
     info['actor_pnorm'] = actor_pnorm
@@ -241,8 +238,6 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
     info |= param_metrics
     info |= feature_metrics
-    
-    print(f'critic info: {info}')
     return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
