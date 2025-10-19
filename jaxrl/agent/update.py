@@ -54,14 +54,14 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
 @jax.jit
 def _grad_conflict_tree_func(grads):
-    print(grads.shape)
-    fgrads = grads.reshape(grads.shape[0], -1) #shape (b, n*m)
-    print(fgrads.shape)
-    grads1 = fgrads[0][None,:] #1,n*m
-    norm_prods = (jnp.linalg.norm(grads1) * jax.vmap(jnp.linalg.norm)(fgrads) + 1e-8) #b,1
+    #grad shape (batch, num critic=2, in, out)
+    conflict_count = 0
+    fgrads = grads.reshape(grads.shape[0], grads.shape[1], -1) #shape (b, 2, n*m)
+    grads1 = fgrads[0] #2,n*m
+    norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
     cosine_similaritiy = grads1 * fgrads / norm_prods
-    conflit += cosine_similaritiy < 0
-    return {'conflict_rate':conflit / fgrads.shape[0]}
+    conflict_count += cosine_similaritiy < 0
+    return {'conflict_rate':conflict_count / grads.shape[0]}
 
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2

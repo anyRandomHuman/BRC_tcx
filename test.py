@@ -43,7 +43,7 @@ import numpy as np
 
 # grad_fn = jax.grad(jnp.tanh)
 # a = grad_fn(jnp.array((0.3,0.2)))
-fn = jax.vmap(lambda x :x)
-a = fn(jnp.array([1,2]))
 
-print(type(a))
+a = jnp.linalg.norm(jnp.ones((2,3,4,4)), axis=(0,1))
+
+print(type(a.shape))
