@@ -208,7 +208,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     
     grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
-    conflicts = compute_grad_conflict(grad_trees)
+    info = compute_grad_conflict(grad_trees)
     
     # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
     q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
@@ -227,7 +227,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
     info |= merge_trees_overwrite(feature_metrics, param_metrics)
     
-    return info|conflicts
+    return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
            temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
