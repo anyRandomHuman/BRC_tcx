@@ -119,10 +119,10 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     
     info = {}
     
-    grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True))
-    grad_trees, entropy = grad_fn(actor.params, batch.observations)
+    grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0))
+    grad, entropy = grad_fn(actor.params, batch.observations)
     
-    grad = merge_trees(grad_trees)
+
     grad_norm = jax.vmap(tree_norm)(grad).mean()
     info['grad_norm'] = grad_norm
     info['entropy'] = entropy.mean()
@@ -281,7 +281,7 @@ def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: 
 
 
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
-           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool, compute_per_layer=False):
+           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
     dist = actor(inputs)
@@ -304,7 +304,6 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
     q_value_target = (bin_values * target_probs).sum(-1)
 
     def critic_loss_fn(critic_params: Params):
-        
         q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
