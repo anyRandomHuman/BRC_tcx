@@ -25,15 +25,15 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
-
-    if not hasattr(activation, 'shape') or len(activation.shape) != 2:
+    sactivation = jnp.squeeze(activation)
+    if not hasattr(activation, 'shape'):
         return {
             'dead_neurons': -1,
             'dead_percentage': -1.0,
             'dormant_ratio': -1.0,
             'feature_norm': -1.0
         }
-    activation_mean = activation.mean(axis=0)  #mean over batch dimension
+    activation_mean = sactivation.mean(axis=0)  #mean over batch dimension
     num_neurons = activation.shape[1]
     num_batch = activation.shape[0]
     zero_count = jnp.sum(activation == 0, axis=0)
@@ -56,15 +56,11 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 @jax.jit
 def _grad_conflict_tree_func(grads):
     #grad shape (1, batch, num critic=2, in, out)
-    print(grads.shape)
-    sgrads = jnp.squeeze(grads)
-    print(sgrads.shape)
-    
+    sgrads = jnp.squeeze(grads)    
     conflict_count = 0
     fgrads = jnp.reshape(sgrads, sgrads.shape[:-2] + (-1,)) #shape critic(1, b, 2, n*m) actor(b, n*m)
     fgrads1 = fgrads[0] #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
-    print(fgrads.shape)
     unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads) #(1,b,2) (1,b)
     conflict_count = unnormed_cosine_similaritiy.sum(axis=0).mean()
     return {'conflict_rate':conflict_count / sgrads.shape[0]}
@@ -123,33 +119,33 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         q_values = (bin_values * q_probs).sum(-1) #action?
         actor_loss = (log_probs * temp().mean() - q_values).mean() #1
         
-        return actor_loss, -log_probs.mean()
+        return actor_loss, [actor_loss, -log_probs.mean()]
     
     info = {}
     
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
-    grad, entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
+    grad, loss_entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
     
 
     grad_norm = tree_norm(grad)
     info['grad_norm'] = grad_norm
-    info['entropy'] = entropy.mean()
+    info['entropy'] = loss_entropy[:,0].mean()
     conflicts = compute_grad_conflict(grad)
     info = info|conflicts
     
     print(f'conflict info: {info}')
 
-    actor_loss, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
+    _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
     params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
     features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-
-    print(f'params_info: {params_info}')
+    info |= params_info
+    info |= features_info
     print(f'features_info: {features_info}')
 
     actor_pnorm = tree_norm(actor.params)
     info['actor_pnorm'] = actor_pnorm
-    info['actor_loss'] = actor_loss
+    info['actor_loss'] = loss_entropy[:,1].mean()
     
     return info
 
