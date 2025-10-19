@@ -80,7 +80,7 @@ def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
-    fc = flatten_tree(prune_single_child_nodes(conflict_tree))
+    fc = flatten_tree(conflict_tree)
     return fc
     
 def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
