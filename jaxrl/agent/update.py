@@ -58,8 +58,8 @@ def _grad_conflict_tree_func(grads):
     conflict_count = 0
     fgrads = grads.reshape(grads.shape[0], grads.shape[1], -1) #shape (b, 2, n*m)
     grads1 = fgrads[0] #2,n*m
-    norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
-    cosine_similaritiy = grads1 * fgrads / norm_prods
+    # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
+    cosine_similaritiy = grads1 * fgrads
     conflict_count += cosine_similaritiy < 0
     return {'conflict_rate':conflict_count / grads.shape[0]}
 
