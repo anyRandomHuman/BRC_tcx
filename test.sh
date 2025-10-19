@@ -2,9 +2,7 @@
 #SBATCH --time=00:05:00
 #SBATCH --partition=gpu_a100_il
 #SBATCH --gres=gpu:1
-#SBATCH --mail-user=urskl@student.kit.edu
-#SBATCH --mail-type=FAIL,END,START
-#SBATCH --signal=B:USR1@60
+
 
 module load  devel/cuda/12.8
 # Activate your conda environment

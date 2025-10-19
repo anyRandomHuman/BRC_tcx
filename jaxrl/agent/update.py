@@ -97,7 +97,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
                  num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
 
-    def actor_loss_fn(actor_params: Params, observations, actor_input):
+    def actor_loss_fn(actor_params: Params, observation, actor_input, task_id):
         dist = actor.apply({'params': actor_params}, actor_input)
         actions, log_probs = dist.sample_and_log_prob(seed=key) # #action
 
@@ -111,7 +111,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         # sq_values = (bin_values* sq_probs).sum(-1) #batch, #action?
         # sactor_loss = ((log_probs * temp().mean())[None, :]  - sq_values).mean(axis=1)
         
-        q_logits = critic(observations, actions, batch.task_ids) #batch, #action?, #value bins
+        q_logits = critic(observation, actor_input, task_id) #batch, #action?, #value bins
         q_probs = jax.nn.softmax(q_logits, axis=-1).mean(axis=0) #action?, #value bins
         bin_values = jnp.linspace(start=-v_max, stop=v_max, num=num_bins)[None]
         q_values = (bin_values * q_probs).sum(-1) #action?
@@ -121,8 +121,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     
     info = {}
     
-    grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0))
-    grad, entropy = grad_fn(actor.params, batch.observations, inputs)
+    grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
+    grad, entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
     
 
     grad_norm = jax.vmap(tree_norm)(grad).mean()
