@@ -26,6 +26,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
     #shape (critic, in, out) (in, out)
+    sactivation = jnp.squeeze(activation)
     if not hasattr(activation, 'shape') or not len(sactivation.shape)== 2 or not len(sactivation.shape)== 3:
         return {
             'dead_neurons': -1,
@@ -33,7 +34,6 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
             'dormant_ratio': -1.0,
             'feature_norm': -1.0
         }
-    sactivation = jnp.squeeze(activation)
     
     if len(sactivation.shape) == 3:
         sactivation = sactivation.mean(axis=0)
