@@ -19,12 +19,12 @@ FLAGS = flags.FLAGS
 
 
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
+flags.DEFINE_integer('eval_episodes', 5, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 10, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 3, 'Mini batch size.')
+flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(5), 'Replay buffer size.')
-flags.DEFINE_integer('start_training', int(2),'Number of training steps to start training.')
+flags.DEFINE_integer('replay_buffer_size', 100, 'Replay buffer size.')
+flags.DEFINE_integer('start_training', 22,'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'h1hand-bookshelf_hard-v0', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', False, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')

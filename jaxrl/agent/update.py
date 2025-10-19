@@ -92,6 +92,7 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
         task_embeddings = critic(None, None, task_ids, True)
         inputs = jnp.concatenate((inputs, task_embeddings), axis=-1)
     return inputs
+
 def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, 
                  num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
@@ -171,40 +172,34 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
     return new_actor, info
 
 def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
-           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool, compute_per_layer=False):
+           temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
+    print(f'batch obs shape {batch.observations.shape}')
+    
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
     dist = actor(inputs)
-    next_actions, next_log_probs = dist.sample_and_log_prob(seed=key)
-    print(f'next_actions shape {next_actions.shape}')
-    print(f'next_log_probs shape {next_log_probs.shape}')
+    next_actions, next_log_probs = dist.sample_and_log_prob(seed=key) #(num_action=32, DOF), (num_action)
     
     next_q_logits = target_critic(batch.next_observations, next_actions, batch.task_ids) #shape (num_critic, batch_size, num_bins) (2, 1024, 101)
-    next_q_probs = jax.nn.softmax(next_q_logits, axis=-1).mean(axis=0) #shape (num_critic, batch_size, num_bins)
-    print(f'next_q_probs shape {next_q_probs.shape}')
+    next_q_probs = jax.nn.softmax(next_q_logits, axis=-1).mean(axis=0) #shape (num_action, num_bins)
     
     # compute target value buckets
     v_min = -v_max
     bin_values = jnp.linspace(start=v_min, stop=v_max, num=num_bins)[None] # 1, num_bins
-    print(f'bin_values shape {bin_values.shape}')
-    
-    target_bin_values = batch.rewards[:, None] + discount * batch.masks[:, None] * (bin_values - temp() * next_log_probs[:, None]) #shape (batch_size, num_bins) (1024, 101)
+    target_bin_values = batch.rewards[:, None] + discount * batch.masks[:, None] * (bin_values - temp() * next_log_probs[:, None]) #shape (num_action, num_bins) (1024, 101)
     target_bin_values = jnp.clip(target_bin_values, v_min, v_max)
-    target_bin_values = (target_bin_values - v_min) / ((v_max - v_min) / (num_bins - 1))
-    print(f'target_bin_values shape {target_bin_values.shape}')
-    
+    target_bin_values = (target_bin_values - v_min) / ((v_max - v_min) / (num_bins - 1))    
     
     lower, upper = jnp.floor(target_bin_values), jnp.ceil(target_bin_values)
     lower_mask = jax.nn.one_hot(lower.reshape(-1), num_bins).reshape((-1, num_bins, num_bins))
     print(f'lower_mask shape {lower_mask.shape}')
     
     upper_mask = jax.nn.one_hot(upper.reshape(-1), num_bins).reshape((-1, num_bins, num_bins))
-    lower_values = (next_q_probs * (upper + (lower == upper).astype(jnp.float32) - target_bin_values))[..., None]
+    lower_values = (next_q_probs * (upper + (lower == upper).astype(jnp.float32) - target_bin_values))[..., None] #num_action, num_bins, 1
     print(f'lower_values shape {lower_values.shape}')
           
     upper_values = (next_q_probs * (target_bin_values - lower))[..., None] #shape (num_critic, batch_size, num_bins, 1)
     target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1)) #shape (num_critic, num_bins) (1, 32,101)
-    q_value_target = (bin_values * target_probs).sum(-1) #
-    print(f'q_value_target shape {q_value_target.shape}')
+    q_value_target = (bin_values * target_probs).sum(-1) #num_actions
     
     def critic_loss_fn(critic_params: Params, observations, actions, task_ids):
         q_logits = critic.apply({'params': critic_params}, observations, actions, task_ids)[None,:] #shape (batch_size=1, num_critic, num_bins)
@@ -315,11 +310,12 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
     q_value_target = (bin_values * target_probs).sum(-1)
 
     def critic_loss_fn(critic_params: Params):
-        if compute_per_layer:
-            q_logits, intermedate = critic.apply({'params': critic_params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
-        else:
-            q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
+        
+        q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
+        
+        print(f'target_probs shape {target_probs.shape}')
+        print(f'q_logprobs shape {q_logprobs.shape}')
 
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
         loss_info = {
@@ -332,12 +328,6 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
             #"critic_agnorm": jnp.sqrt((action_grad**2).sum(-1)).mean(0),
         }
         
-        if compute_per_layer:
-            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params)
-            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            loss_info = loss_info|per_layer_metrics
-            
         return critic_loss, loss_info
     new_critic, info = critic.apply_gradient(critic_loss_fn)
     info["critic_gnorm"] = info.pop("grad_norm")
