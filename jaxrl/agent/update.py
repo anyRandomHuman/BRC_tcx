@@ -126,18 +126,21 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     grad, entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
     
 
-    grad_norm = jax.vmap(tree_norm)(grad).mean()
+    grad_norm = tree_norm(grad)
     info['grad_norm'] = grad_norm
     info['entropy'] = entropy.mean()
     conflicts = compute_grad_conflict(grad)
     info = info|conflicts
     
+    print(f'conflict info: {info}')
+
     actor_loss, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-    per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-    info = info|per_layer_metrics
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
+    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+
+    print(f'params_info: {params_info}')
+    print(f'features_info: {features_info}')
 
     actor_pnorm = tree_norm(actor.params)
     info['actor_pnorm'] = actor_pnorm
@@ -230,6 +233,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
     info |= merge_trees_overwrite(feature_metrics, param_metrics)
     
+    print(f'critic info: {info}')
     return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
