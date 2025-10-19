@@ -66,7 +66,7 @@ def _grad_conflict_tree_func(grads):
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
     print(fgrads.shape)
     unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads) #(1,b,2) (1,b)
-    conflict_count = unnormed_cosine_similaritiy.sum(unnormed_cosine_similaritiy.shape[:-1]).mean()
+    conflict_count = unnormed_cosine_similaritiy.sum(axis=0).mean()
     return {'conflict_rate':conflict_count / sgrads.shape[0]}
 
 def is_leaf_2d(x):
