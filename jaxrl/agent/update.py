@@ -173,14 +173,14 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
 
 def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
            temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
-    print(f'batch obs shape {batch.observations.shape}')
-    
+
+    #note that batch size is always 32
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
     dist = actor(inputs)
-    next_actions, next_log_probs = dist.sample_and_log_prob(seed=key) #(num_action=32, DOF), (num_action)
+    next_actions, next_log_probs = dist.sample_and_log_prob(seed=key) #(batch, DOF), (batch)
     
     next_q_logits = target_critic(batch.next_observations, next_actions, batch.task_ids) #shape (num_critic, batch_size, num_bins) (2, 1024, 101)
-    next_q_probs = jax.nn.softmax(next_q_logits, axis=-1).mean(axis=0) #shape (num_action, num_bins)
+    next_q_probs = jax.nn.softmax(next_q_logits, axis=-1).mean(axis=0) #shape (batch, num_bins)
     
     # compute target value buckets
     v_min = -v_max
@@ -190,28 +190,25 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     target_bin_values = (target_bin_values - v_min) / ((v_max - v_min) / (num_bins - 1))    
     
     lower, upper = jnp.floor(target_bin_values), jnp.ceil(target_bin_values)
-    lower_mask = jax.nn.one_hot(lower.reshape(-1), num_bins).reshape((-1, num_bins, num_bins))
-    print(f'lower_mask shape {lower_mask.shape}')
-    
+    lower_mask = jax.nn.one_hot(lower.reshape(-1), num_bins).reshape((-1, num_bins, num_bins)) #batch, bin, bin    
     upper_mask = jax.nn.one_hot(upper.reshape(-1), num_bins).reshape((-1, num_bins, num_bins))
-    lower_values = (next_q_probs * (upper + (lower == upper).astype(jnp.float32) - target_bin_values))[..., None] #num_action, num_bins, 1
-    print(f'lower_values shape {lower_values.shape}')
+    lower_values = (next_q_probs * (upper + (lower == upper).astype(jnp.float32) - target_bin_values))[..., None] #batch, num_bins, 1
           
     upper_values = (next_q_probs * (target_bin_values - lower))[..., None] #shape (num_critic, batch_size, num_bins, 1)
-    target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1)) #shape (num_critic, num_bins) (1, 32,101)
-    q_value_target = (bin_values * target_probs).sum(-1) #num_actions
+    target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1)) #shape (1, batch, num_bins) (1, 32,101)
+    q_value_target = (bin_values * target_probs).sum(-1) # 1, batch
     
-    def critic_loss_fn(critic_params: Params, observations, actions, task_ids):
+    def critic_loss_fn(critic_params: Params, observations, actions, task_ids, target_prob):
         q_logits = critic.apply({'params': critic_params}, observations, actions, task_ids)[None,:] #shape (batch_size=1, num_critic, num_bins)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1) #shape (batch_size, num_critic, num_bins)
 
-        critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
+        critic_loss = -(target_prob[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
             
         return critic_loss
     info = {}
     
-    grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0))
-    grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids)
+    grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
+    grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
     grads = merge_trees(grad_trees)
     conflicts = compute_grad_conflict(grads)
     info |= conflicts
@@ -313,10 +310,6 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         
         q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
-        
-        print(f'target_probs shape {target_probs.shape}')
-        print(f'q_logprobs shape {q_logprobs.shape}')
-
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
         loss_info = {
             "critic_loss": critic_loss,

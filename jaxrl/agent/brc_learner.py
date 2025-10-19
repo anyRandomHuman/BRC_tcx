@@ -25,7 +25,6 @@ def _get_infos(
     num_bins: int, 
     v_max: float,
     multitask: bool,
-    evaluate = True
 ):
     rng, actor_key, critic_key = jax.random.split(rng, 3)
     critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
