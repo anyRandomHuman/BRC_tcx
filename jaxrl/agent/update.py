@@ -119,13 +119,13 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         q_values = (bin_values * q_probs).sum(-1) #action?
         actor_loss = (log_probs * temp().mean() - q_values).mean() #1
         
-        return actor_loss, [actor_loss, -log_probs.mean()]
+        return actor_loss, jnp.array([actor_loss, -log_probs.mean()])
     
     info = {}
     
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
-    
+    loss_entropy = jnp.array(loss_entropy)
 
     grad_norm = tree_norm(grad)
     info['grad_norm'] = grad_norm
