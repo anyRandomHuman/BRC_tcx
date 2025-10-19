@@ -44,6 +44,9 @@ import numpy as np
 # grad_fn = jax.grad(jnp.tanh)
 # a = grad_fn(jnp.array((0.3,0.2)))
 
-a = jnp.linalg.norm(jnp.ones((2,3,4,4)), axis=(0,1))
+a = jnp.ones((2,3,4,4))
+b = jnp.reshape(a, a.shape[:-2] + (-1,))
 
-print(type(a.shape))
+c = jnp.einsum('...i, ...i', b)
+
+jnp.ou

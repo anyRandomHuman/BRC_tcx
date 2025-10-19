@@ -55,13 +55,14 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
 @jax.jit
 def _grad_conflict_tree_func(grads):
-    #grad shape (batch, num critic=2, in, out)
+    #grad shape (1, batch, num critic=2, in, out)
+    grads = jnp.squeeze(grads)
     conflict_count = 0
-    fgrads = grads.reshape(grads.shape[0], grads.shape[1], -1) #shape (b, 2, n*m)
+    fgrads = jnp.reshape(grads, grads.shape[:-2] + (-1,)) #shape critic(1, b, 2, n*m) actor(b, n*m)
     grads1 = fgrads[0] #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
-    unnormed_cosine_similaritiy = grads1 * fgrads
-    conflict_count += unnormed_cosine_similaritiy < 0
+    unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', grads1, grads) #(1,b,2) (1,b)
+    conflict_count = unnormed_cosine_similaritiy.sum(unnormed_cosine_similaritiy.shape[:-1]).mean()
     return {'conflict_rate':conflict_count / grads.shape[0]}
 
 def is_leaf_2d(x):
