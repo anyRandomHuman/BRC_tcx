@@ -231,7 +231,8 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     }
     param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params))
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-    info |= merge_trees_overwrite(feature_metrics, param_metrics)
+    info |= param_metrics
+    info |= feature_metrics
     
     print(f'critic info: {info}')
     return info

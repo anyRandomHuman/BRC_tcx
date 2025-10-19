@@ -4,9 +4,13 @@ import wandb
 
 def log_to_wandb(step: int, infos: dict, suffix: str = ''):
     dict_to_log = {'timestep': step}
+    
     for info_key in infos:
-        for seed, value in enumerate(infos[info_key]):
-            dict_to_log[f'seed{seed}/{info_key}{suffix}'] = value
+        try:
+            for seed, value in enumerate(infos[info_key]):
+                dict_to_log[f'seed{seed}/{info_key}{suffix}'] = value
+        except:
+            print(f'error in {info_key}, the value is {infos[info_key]}')
     wandb.log(dict_to_log, step=step)
     
 def get_wandb_video(renders: np.ndarray, fps: int = 15):

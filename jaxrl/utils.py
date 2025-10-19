@@ -72,7 +72,7 @@ def flatten_tree(tree):
         flattened_dict[key] = value
     return flattened_dict
 
-def remove_from_tree(tree, to_remove_keys=['LayerNorm', 'bias']):
+def remove_from_tree(tree, to_remove_keys=['LayerNorm', 'bias', 'flat']):
     # tree_copy = deepcopy(tree)
     for key in list(tree.keys()):
         for rk in to_remove_keys:
