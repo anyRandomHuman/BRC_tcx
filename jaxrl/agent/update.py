@@ -24,8 +24,8 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 
 @jax.jit
-def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
-    #shape (critic, in, out) (in, out)
+def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.0001):
+    #shape (critic, b, neuron) (b, neuron)
     sactivation = jnp.squeeze(activation)
     print(f'sactivation shape: {sactivation.shape}')
     if not hasattr(activation, 'shape') or (not len(sactivation.shape)== 2 and not len(sactivation.shape)== 3):
@@ -41,9 +41,8 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     
     activation_mean = sactivation.mean(axis=0)  #mean over batch dimension
     num_neurons = sactivation.shape[1]
-    num_batch = sactivation.shape[0]
-    zero_count = jnp.sum(sactivation == 0, axis=0)
-    dead_neurons = jnp.sum(zero_count / num_batch >= dead_threshold)
+    neuron_var = jnp.var(sactivation, axis=0)
+    dead_neurons = jnp.where(neuron_var < dead_threshold, jnp.ones(sactivation.shape(1)), jnp.zeros(sactivation.shape(0)))
     dead_percentage = (dead_neurons / num_neurons) * 100
     
     dormant_score = activation_mean / activation_mean.mean()
