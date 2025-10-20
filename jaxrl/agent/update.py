@@ -43,7 +43,7 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     num_neurons = sactivation.shape[1]
     neuron_var = jnp.var(sactivation, axis=0)
     dead_neurons = jnp.where(neuron_var < dead_threshold, jnp.ones(sactivation.shape[1]), jnp.zeros(sactivation.shape[1]))
-    dead_percentage = (dead_neurons / num_neurons) * 100
+    dead_percentage = (dead_neurons.sum() / num_neurons) * 100
     
     dormant_score = activation_mean / activation_mean.mean()
     dormant_ratio = jnp.sum(dormant_score < dormant_threshold) / num_neurons
