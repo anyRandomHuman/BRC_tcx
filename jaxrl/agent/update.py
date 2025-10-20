@@ -27,7 +27,8 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
     #shape (critic, in, out) (in, out)
     sactivation = jnp.squeeze(activation)
-    if not hasattr(activation, 'shape') or not len(sactivation.shape)== 2 or not len(sactivation.shape)== 3:
+    print(f'sactivation shape: {sactivation.shape}')
+    if not hasattr(activation, 'shape') or (not len(sactivation.shape)== 2 and not len(sactivation.shape)== 3):
         return {
             'dead_neurons': -1,
             'dead_percentage': -1.0,
@@ -83,14 +84,15 @@ def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
     fc = flatten_tree(conflict_tree)
     return fc
     
-def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
+def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
         remove_from_tree(tree)
     if is_leaf is not None:
         return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
     else:
         return_tree = jax.tree.map(tree_func, tree)
-    return flatten_tree(prune_single_child_nodes(return_tree))
+    prune_single_child_nodes(return_tree)
+    return flatten_tree({f'{network_name}': return_tree})
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -139,8 +141,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info = info|conflicts
     _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params))
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), 'actor')
+    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate, 'actor')
     features_info_copy = deepcopy(features_info)
     for key in features_info.keys():
         if 'flat' in key:
@@ -235,8 +237,8 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params))
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), 'critic')
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate, 'critic')
     info |= param_metrics
     info |= feature_metrics
     return info
