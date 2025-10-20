@@ -2,7 +2,7 @@
 #SBATCH --time=00:01:00
 #SBATCH --partition=dev_cpu
 # Base script to submit
-BASE_SCRIPT="test.sh"
+BASE_SCRIPT="queue_DMC.sh"
 
 # Array of flag sets for train.py (not SLURM flags)
 TRAIN_FLAGS=(
