@@ -51,7 +51,6 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     fnorm = jnp.sqrt(sum(activation_mean**2).sum())
     
     return_dict = {
-        'dead_neurons': dead_neurons,
         'dead_percentage': dead_percentage,
         'dormant_ratio': dormant_ratio,
         'feature_norm': fnorm
