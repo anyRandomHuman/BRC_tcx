@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=00:05:00
-#SBATCH --partition=gpu_a100_il
+#SBATCH --partition=gpu_a100_short
 #SBATCH --gres=gpu:1
 
 
