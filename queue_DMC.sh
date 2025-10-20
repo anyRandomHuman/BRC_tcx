@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=22:00:00
+#SBATCH --time=18:00:00
 #SBATCH --partition=gpu_h100_il
 #SBATCH --gres=gpu:1
 #SBATCH --mail-user=urskl@student.kit.edu
@@ -25,6 +25,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train.py --env_names DMC_DOGS
+python train.py "$@"
 
 conda deactivate
