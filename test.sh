@@ -7,7 +7,9 @@
 module load  devel/cuda/12.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
-conda activate py10
+# conda activate py10
+conda activate DMC
+
 export MUJOCO_GL=egl
 
 cleanup_and_save()
@@ -23,6 +25,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train_copy.py
+python train_copy.py --env_names=walker-stand
 #--save_location "$OUTPUT_FILE"
 conda deactivate
