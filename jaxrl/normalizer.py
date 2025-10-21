@@ -2,13 +2,13 @@ import numpy as np
 from jaxrl.utils import Batch
 
 class RewardNormalizer(object):
-    def __init__(self, num_seeds: int, target_entropy: float, discount: float = 0.99, v_max: float = 10.0, max_steps: int | None = None):
+    def __init__(self, num_seeds: int, target_entropy: float, discount: float = 0.99, v_max: float = 10.0, max_steps=None):
         self.returns_min_norm = np.zeros(num_seeds) + np.inf
         self.returns_max_norm = np.zeros(num_seeds) - np.inf           
         self.effective_horizon = 1 / (1 - discount)
         self.discount = discount
         self.v_max = v_max
-        self.target_entropy = target_entropy        
+        self.target_entropy = target_entropy
         self.max_steps = max_steps
         self.step = 0
         self.rewards = np.zeros((num_seeds, max_steps)) if max_steps is not None else [[] for _ in range(num_seeds)]
