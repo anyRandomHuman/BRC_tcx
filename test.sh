@@ -4,7 +4,7 @@
 #SBATCH --gres=gpu:1
 
 
-module load  devel/cuda/12.8
+module load  devel/cuda/11.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
 conda activate scale_rl
