@@ -20,7 +20,7 @@ flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluatio
 flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
 flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(500000), 'Replay buffer size.')
+flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'pendulum-spin', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
