@@ -121,6 +121,7 @@ def main(_):
                 obs = sample(i, obs)
 
     pause_iter = -1
+    # f = open(f'{save_path}/pause.txt', 'w')
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         if os.path.exists(f'{submit_dir}/pause.flag'):
             pause_iter = i
@@ -132,10 +133,11 @@ def main(_):
         _ = agent.update(batches, FLAGS.updates_per_step, i)
         if i % eval_interval == 0 and i >= FLAGS.start_training:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
-            agent.save(save_path)
+            # agent.save(save_path)
             # replay_buffer.save(save_path)
-            with open(f'{save_path}/pause.txt', 'w') as f:
-                f.write(f'{i}')
+            # f.write(f'{i}')
+    # f.write(f'{FLAGS.max_steps}')
+    # f.close()
     agent.save(save_path)
     # replay_buffer.save(save_path)
     
