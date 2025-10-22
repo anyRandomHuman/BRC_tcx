@@ -27,7 +27,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.0001):
     #shape (critic, b, neuron) (b, neuron)
     sactivation = jnp.squeeze(activation)
-    print(f'sactivation shape: {sactivation.shape}')
+    # print(f'sactivation shape: {sactivation.shape}')
     if not hasattr(activation, 'shape') or (not len(sactivation.shape)== 2 and not len(sactivation.shape)== 3):
         return {
             'dead_neurons': -1,
@@ -60,7 +60,7 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 @jax.jit
 def _grad_conflict_tree_func(grads):
     #grad shape (1, batch, num critic=2, in, out)
-    sgrads = jnp.squeeze(grads)    
+    sgrads = jnp.squeeze(grads, axis=0) if grads.shape[0] == 1 else grads
     conflict_count = 0
     fgrads = jnp.reshape(sgrads, sgrads.shape[:-2] + (-1,)) #shape critic(1, b, 2, n*m) actor(b, n*m)
     fgrads1 = fgrads[0] #2,n*m
@@ -72,7 +72,7 @@ def _grad_conflict_tree_func(grads):
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
-def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
+def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
         remove_from_tree(grads)
     if is_leaf is not None:
@@ -80,7 +80,7 @@ def compute_grad_conflict(grads, remove_ln=True, is_leaf=is_leaf_2d):
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
     fc = flatten_tree(conflict_tree)
-    return fc
+    return {f'{network_name}': fc}
     
 def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
@@ -132,15 +132,16 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     grad, loss_entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
     loss_entropy = jnp.array(loss_entropy)
 
+    network_name = 'actor'
     grad_norm = tree_norm(grad)
     info['grad_norm'] = grad_norm
     info['entropy'] = loss_entropy[:,0].mean()
-    conflicts = compute_grad_conflict(grad)
+    conflicts = compute_grad_conflict(grad, network_name)
     info = info|conflicts
     _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), 'actor')
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate, 'actor')
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
     features_info_copy = deepcopy(features_info)
     for key in features_info.keys():
         if 'flat' in key:
@@ -217,13 +218,14 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         critic_loss = -(target_prob[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
             
         return critic_loss
-    
+
+    network_name = 'critic'
     grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
-    info = compute_grad_conflict(grad_trees)
+    info = compute_grad_conflict(grad_trees, network_name)
     
     # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
-    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)        
+    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
     q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
     critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
     
@@ -235,8 +237,8 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), 'critic')
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate, 'critic')
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
     info |= param_metrics
     info |= feature_metrics
     return info

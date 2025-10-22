@@ -150,7 +150,7 @@ class DoubleCritic(nn.Module):
             inputs = jnp.concatenate((observations, actions, task_embedding), axis=-1)            
         q_value1 = self.critic1(inputs)
         q_value2 = self.critic2(inputs)
-        return q_value1, q_value2
+        return jnp.array([q_value1, q_value2])
 
 class NormalTanhPolicy(nn.Module):
     action_dim: int
