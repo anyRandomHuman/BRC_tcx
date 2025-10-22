@@ -47,6 +47,7 @@ def read_pause(save_dir='./checkpoints'):
 
 
 def main(_):
+    print(f'task: {FLAGS.env_names}')
     if FLAGS.log_to_wandb:
         import wandb
         import datetime

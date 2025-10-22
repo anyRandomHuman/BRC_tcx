@@ -43,6 +43,7 @@ def read_pause(save_dir='./checkpoints'):
 
 
 def main(_):
+    print(f'task: {FLAGS.env_names}')
     if FLAGS.log_to_wandb:
         import wandb
         import datetime
@@ -118,7 +119,7 @@ def main(_):
             print(f'Pause file found, but env name {env_name} does not match current env {FLAGS.env_names}, starting from scratch')
             for i in range(FLAGS.start_training):
                 obs = sample(i, obs)
-    
+
     pause_iter = -1
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         if os.path.exists(f'{submit_dir}/pause.flag'):
