@@ -99,7 +99,8 @@ def main(_):
         return observations
 
     submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-    save_dir = submit_dir + '/checkpoints'
+    save_space = r'/pfs/work9/workspace/scratch/ka_et4232-tcx'
+    save_dir = save_space + '/checkpoints'
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -135,7 +136,7 @@ def main(_):
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
         run_time = time.time() - start_time
-        if FLAGS.runtime - run_time < 180:
+        if FLAGS.assigned_time - run_time < 600:
             replay_buffer.save(save_path)
             break
         # if i % eval_interval == 0 and i >= FLAGS.start_training:
