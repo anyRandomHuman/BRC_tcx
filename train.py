@@ -28,6 +28,7 @@ flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
+flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
 
 def read_pause(save_dir='./checkpoints'):
     if os.path.exists(f'{save_dir}/pause.txt'):
@@ -120,6 +121,8 @@ def main(_):
             for i in range(FLAGS.start_training):
                 obs = sample(i, obs)
 
+    import  time
+    start_time = time.time()
     pause_iter = -1
     # f = open(f'{save_path}/pause.txt', 'w')
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
@@ -131,8 +134,12 @@ def main(_):
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
-        if i % eval_interval == 0 and i >= FLAGS.start_training:
-            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
+        run_time = time.time() - start_time
+        if FLAGS.runtime - run_time < 180:
+            replay_buffer.save(save_path)
+            break
+        # if i % eval_interval == 0 and i >= FLAGS.start_training:
+            # info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
             # agent.save(save_path)
             # replay_buffer.save(save_path)
             # f.write(f'{i}')
