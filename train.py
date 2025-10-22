@@ -133,11 +133,11 @@ def main(_):
         if i % eval_interval == 0 and i >= FLAGS.start_training:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
             agent.save(save_path)
-            replay_buffer.save(save_path)
-        with open(f'{save_path}/pause.txt', 'w') as f:
-            f.write(f'{i}')
+            # replay_buffer.save(save_path)
+            with open(f'{save_path}/pause.txt', 'w') as f:
+                f.write(f'{i}')
     agent.save(save_path)
-    replay_buffer.save(save_path)
+    # replay_buffer.save(save_path)
     
     if pause_iter >= 0:
         with open(f'{save_path}/pause.txt', 'w') as f:
