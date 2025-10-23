@@ -24,11 +24,12 @@ flags.DEFINE_integer('replay_buffer_size', int(500000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'pendulum-spin', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
+flags.DEFINE_boolean('evaluate', False, 'Whether to evaluate')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
-flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
+flags.DEFINE_integer('time', 64800, 'Width of the critic network.')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -120,20 +121,20 @@ def main(_):
                 pause_iter = i
                 os.remove(f'{submit_dir}/pause.flag')
                 break
-            if FLAGS.assigned_time - run_time < 180:
+            if FLAGS.time - run_time < 180:
                 replay_buffer.save(save_path)
                 break
             obs = sample(i + FLAGS.start_training, obs)
             batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
             batches = reward_normalizer.normalize(batches, agent.get_temperature())
             _ = agent.update(batches, FLAGS.updates_per_step, i)
-            if i % eval_interval == 0 and i >= FLAGS.start_training:
+            if i % eval_interval == 0 and i >= FLAGS.start_training and FLAGS.evaluate:
                 info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
                                                     render=FLAGS.render)
                 # agent.save(save_path)
                 # replay_buffer.save(save_path)
-                f.write(f'{i}')
-                f.write(str(info_dict))
+                # f.write(f'{i}')
+                # f.write(str(info_dict))
         f.write(f'{FLAGS.max_steps}')
     agent.save(save_path)
 

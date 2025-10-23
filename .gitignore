@@ -1,5 +1,5 @@
 checkpoints/*
-wandb*
+wandb/*
 slurm*
 test_space/*
 __pycache__/
