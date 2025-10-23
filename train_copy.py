@@ -143,7 +143,7 @@ def main(_):
     #             f.write(f'{i}')
     # with open(f'{save_path}/pause.txt', 'w') as f:
     #     f.write(f'{FLAGS.max_steps}')
-    # agent.save(save_path)
+    agent.save(save_path)
     # replay_buffer.save(save_path)
 
     if pause_iter >= 0:
