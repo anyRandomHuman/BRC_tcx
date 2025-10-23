@@ -159,6 +159,7 @@ def main(_):
             if i % eval_interval == 0 and i >= FLAGS.start_training:
                 info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
                                                     render=FLAGS.render)
+                print(f'info_dict: {info_dict}')
                 # agent.save(save_path)
                 # replay_buffer.save(save_path)
                 f.write(f'{i}')
