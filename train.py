@@ -30,19 +30,6 @@ flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
 flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
 
-def read_pause(save_dir='./checkpoints'):
-    if os.path.exists(f'{save_dir}/pause.txt'):
-        with open(f'{save_dir}/pause.txt', 'r') as f:
-            line = f.readline().strip()
-            if line:
-                env_name = line[:-2]
-                pause = int(line[-1])
-        os.remove(f'{save_dir}/pause.txt')
-        return env_name, pause
-
-    return None, 0
-
-
 def main(_):
     print(f'task: {FLAGS.env_names}')
     if FLAGS.log_to_wandb:
@@ -111,16 +98,17 @@ def main(_):
     obs = env.reset()
     start_iter = 0
     if os.path.exists(f'{save_path}/pause.txt'):
-        env_name, start_iter = read_pause(save_path)
-        if env_name == f'brc-{FLAGS.env_names}':
+        try:
             agent.load(save_path)
             replay_buffer.load(save_path)
             print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
             obs = sample(start_iter, obs)
-        else:
-            print(f'Pause file found, but env name {env_name} does not match current env {FLAGS.env_names}, starting from scratch')
+        except:
             for i in range(FLAGS.start_training):
                 obs = sample(i, obs)
+    else:
+        for i in range(FLAGS.start_training):
+            obs = sample(i, obs)
 
     import  time
     start_time = time.time()
@@ -139,14 +127,14 @@ def main(_):
             batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
             batches = reward_normalizer.normalize(batches, agent.get_temperature())
             _ = agent.update(batches, FLAGS.updates_per_step, i)
-        #     if i % eval_interval == 0 and i >= FLAGS.start_training:
-        #         info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
-        #                                             render=FLAGS.render)
-        #         # agent.save(save_path)
-        #         # replay_buffer.save(save_path)
-        #         f.write(f'{i}')
-        #         f.write(str(info_dict))
-        # f.write(f'{FLAGS.max_steps}')
+            if i % eval_interval == 0 and i >= FLAGS.start_training:
+                info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
+                                                    render=FLAGS.render)
+                # agent.save(save_path)
+                # replay_buffer.save(save_path)
+                f.write(f'{i}')
+                f.write(str(info_dict))
+        f.write(f'{FLAGS.max_steps}')
     agent.save(save_path)
 
             
