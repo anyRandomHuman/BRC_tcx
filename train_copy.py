@@ -43,7 +43,7 @@ flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(512),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'dog-run', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
-flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
+flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
@@ -160,9 +160,11 @@ def main(_):
                                                 render=FLAGS.render)
             agent.save(save_path)
             # replay_buffer.save(save_path)
-            with open(f'{save_path}/pause.txt', 'w') as f:
+            with open(f'{save_path}/pause.txt', 'a') as f:
                 f.write(f'{i}')
-    with open(f'{save_path}/pause.txt', 'w') as f:
+                f.write(str(info_dict))
+
+    with open(f'{save_path}/pause.txt', 'a') as f:
         f.write(f'{FLAGS.max_steps}')
     agent.save(save_path)
     # replay_buffer.save(save_path)
