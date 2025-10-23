@@ -101,7 +101,8 @@ def main(_):
         return observations
 
     submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-    save_dir = submit_dir + '/checkpoints'
+    save_space = r'/pfs/work9/workspace/scratch/ka_et4232-tcx'
+    save_dir = save_space + '/checkpoints'
     #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -133,16 +134,16 @@ def main(_):
                                        FLAGS.updates_per_step)  # sample randomly from all data,not one per task
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
-        if i % eval_interval == 0 and i >= FLAGS.start_training:
-            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
-                                                render=FLAGS.render)
-            agent.save(save_path)
-            # replay_buffer.save(save_path)
-            with open(f'{save_path}/pause.txt', 'w') as f:
-                f.write(f'{i}')
-    with open(f'{save_path}/pause.txt', 'w') as f:
-        f.write(f'{FLAGS.max_steps}')
-    agent.save(save_path)
+    #     if i % eval_interval == 0 and i >= FLAGS.start_training:
+    #         info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
+    #                                             render=FLAGS.render)
+    #         agent.save(save_path)
+    #         # replay_buffer.save(save_path)
+    #         with open(f'{save_path}/pause.txt', 'w') as f:
+    #             f.write(f'{i}')
+    # with open(f'{save_path}/pause.txt', 'w') as f:
+    #     f.write(f'{FLAGS.max_steps}')
+    # agent.save(save_path)
     # replay_buffer.save(save_path)
 
     if pause_iter >= 0:
