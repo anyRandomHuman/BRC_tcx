@@ -4,10 +4,10 @@
 #SBATCH --gres=gpu:1
 
 
-module load  devel/cuda/11.8
+module load  devel/cuda/12.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
-conda activate scale_rl
+conda activate dime
 #conda activate DMC
 
 export MUJOCO_GL=egl
@@ -25,6 +25,6 @@ cleanup_and_save()
 
 trap 'cleanup_and_save' USR1
 
-python train_copy.py --env_names=pendulum-spin
+python train_copy.py "$@"
 #--save_location "$OUTPUT_FILE"
 conda deactivate
