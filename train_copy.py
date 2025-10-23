@@ -18,21 +18,36 @@ from jaxrl.env_names import get_environment_list
 FLAGS = flags.FLAGS
 
 
+# flags.DEFINE_integer('seed', 0, 'Random seed.')
+# flags.DEFINE_integer('eval_episodes', 5, 'Number of episodes used for evaluation.')
+# flags.DEFINE_integer('eval_interval', 40, 'Eval interval.')
+# flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
+# flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
+# flags.DEFINE_integer('replay_buffer_size', 100, 'Replay buffer size.')
+# flags.DEFINE_integer('start_training', 22,'Number of training steps to start training.')
+# flags.DEFINE_string('env_names', 'dog-run', 'Environment name.')
+# flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
+# flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
+# flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
+# flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
+# flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
+# flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
+
+flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 5, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 40, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', 100, 'Replay buffer size.')
-flags.DEFINE_integer('start_training', 22,'Number of training steps to start training.')
+flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
+flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
+flags.DEFINE_integer('batch_size', 256, 'Mini batch size.')
+flags.DEFINE_integer('max_steps', int(5000), 'Number of training steps.')
+flags.DEFINE_integer('replay_buffer_size', int(500000), 'Replay buffer size.')
+flags.DEFINE_integer('start_training', int(512),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'dog-run', 'Environment name.')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
 flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
-flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
-flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
-
+flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
+flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
+flags.DEFINE_integer('assigned_time', 1800, 'Width of the critic network.')
 
 def read_pause(save_dir='./checkpoints'):
     if os.path.exists(f'{save_dir}/pause.txt'):
@@ -106,7 +121,7 @@ def main(_):
     #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}'
+    save_path = f'{save_dir}/{FLAGS.env_names}_test'
     os.makedirs(save_path, exist_ok=True)
 
     obs = env.reset()
@@ -123,21 +138,27 @@ def main(_):
             for i in range(FLAGS.start_training):
                 obs = sample(i, obs)
 
+    import  time
+    start_time = time.time()
     pause_iter = -1
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
+        run_time = time.time() - start_time
         if os.path.exists(f'{submit_dir}/pause.flag'):
             pause_iter = i
             os.remove(f'{submit_dir}/pause.flag')
+            break
+        if FLAGS.assigned_time - run_time < 180:
+            replay_buffer.save(save_path)
             break
         obs = sample(i + FLAGS.start_training, obs)
         batches = replay_buffer.sample(FLAGS.batch_size,
                                        FLAGS.updates_per_step)  # sample randomly from all data,not one per task
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
-    #     if i % eval_interval == 0 and i >= FLAGS.start_training:
-    #         info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
-    #                                             render=FLAGS.render)
-    #         agent.save(save_path)
+        if i % eval_interval == 0 and i >= FLAGS.start_training:
+            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
+                                                render=FLAGS.render)
+            # agent.save(save_path)
     #         # replay_buffer.save(save_path)
     #         with open(f'{save_path}/pause.txt', 'w') as f:
     #             f.write(f'{i}')

@@ -127,18 +127,19 @@ def main(_):
     pause_iter = -1
     # f = open(f'{save_path}/pause.txt', 'w')
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
+        run_time = time.time() - start_time
         if os.path.exists(f'{submit_dir}/pause.flag'):
             pause_iter = i
             os.remove(f'{submit_dir}/pause.flag')
+            break
+        if FLAGS.assigned_time - run_time < 600:
+            replay_buffer.save(save_path)
             break
         obs = sample(i + FLAGS.start_training, obs)
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step) #sample randomly from all data,not one per task
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
-        run_time = time.time() - start_time
-        if FLAGS.assigned_time - run_time < 600:
-            replay_buffer.save(save_path)
-            break
+
         # if i % eval_interval == 0 and i >= FLAGS.start_training:
             # info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
             # agent.save(save_path)
