@@ -1,7 +1,8 @@
 import functools
 import jax.numpy as jnp
 import jax
-from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite
+from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_child_nodes, merge_trees_overwrite, \
+    flatten_tree, remove_from_tree
 
 
 @jax.jit
@@ -12,6 +13,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     approximate_rank_threshold = 1.0 - rank_delta
     threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
     effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
+
     pnorm = jnp.sqrt(sum(weight_matrix ** 2).sum())
 
     return_dict = {
@@ -21,28 +23,48 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     return return_dict
 
 
-def compute_weight_metrics_pre_layer(intermediates):
-    return prune_single_child_nodes(jax.tree.map(_weight_metric_tree_func, intermediates))
-
-
 @jax.jit
-def _activation_metric_tree_func(activation):
+def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
+    if not hasattr(activation, 'shape') or len(activation.shape) != 2:
+        return {
+            'dead_neurons': 0,
+            'dead_percentage': 0.0,
+            'dormant_ratio': 0.0,
+            'feature_norm': 0.0
+        }
+    activation_mean = activation.mean(axis=0)  # mean over batch dimension
     num_neurons = activation.shape[1]
-    dead_neurons = jnp.all(activation == 0, axis=0).sum().item()
+    num_batch = activation.shape[0]
+    zero_count = jnp.sum(activation == 0, axis=0)
+    dead_neurons = jnp.sum(zero_count / num_batch >= dead_threshold)
     dead_percentage = (dead_neurons / num_neurons) * 100
-    fnorm = jnp.sqrt(sum(activation ** 2).sum())
+
+    dormant_score = activation_mean / activation_mean.mean()
+    dormant_ratio = jnp.sum(dormant_score < dormant_threshold) / num_neurons
+
+    fnorm = jnp.sqrt(sum(activation_mean ** 2).sum())
 
     return_dict = {
         'dead_neurons': dead_neurons,
         'dead_percentage': dead_percentage,
+        'dormant_ratio': dormant_ratio,
         'feature_norm': fnorm
     }
     return return_dict
 
 
-def compute_activation_metrics_per_layer(activations_per_layer):
-    dead = jax.tree.map(_activation_metric_tree_func, activations_per_layer)
-    return dead
+def is_leaf_2d(x):
+    return hasattr(x, 'shape') and len(x.shape) == 2
+
+
+def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
+    if remove_ln:
+        remove_from_tree(tree)
+    if is_leaf is not None:
+        dead = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+    else:
+        dead = jax.tree.map(tree_func, tree)
+    return prune_single_child_nodes(dead)
 
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
@@ -55,12 +77,12 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
 
 
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch, num_bins: int, v_max: float,
-                 multitask: bool, compute_per_layer_metrics=False):
+                 multitask: bool, compute_per_layer=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
 
     def actor_loss_fn(actor_params: Params):
         # changes for computing efective rank and dead neurons
-        if compute_per_layer_metrics:
+        if compute_per_layer:
             dist, intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)
         else:
             dist = actor.apply({'params': actor_params}, inputs)
@@ -79,13 +101,14 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
 
         # changes for computing efective rank and dead neurons
 
-        if compute_per_layer_metrics:
-            param_metrics = compute_weight_metrics_pre_layer(actor_params)
-            feature_metrics = compute_activation_metrics_per_layer(intermedate)
+        if compute_per_layer:
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            loss_info = loss_info | per_layer_metrics
+            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
+            loss_info = loss_info | flattened_per_layer_metrics
 
-        return actor_loss,
+        return actor_loss, loss_info
 
     new_actor, info = actor.apply_gradient(actor_loss_fn)
     info['actor_gnorm'] = info.pop('grad_norm')
@@ -148,7 +171,7 @@ def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: 
 
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                   temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool,
-                  compute_per_layer_metrics=False):
+                  compute_per_layer=False):
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
     dist = actor(inputs)
     next_actions, next_log_probs = dist.sample_and_log_prob(seed=key)
@@ -172,7 +195,7 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
     q_value_target = (bin_values * target_probs).sum(-1)
 
     def critic_loss_fn(critic_params: Params):
-        if compute_per_layer_metrics:
+        if compute_per_layer:
             q_logits, intermedate = critic.apply({'params': critic_params}, batch.observations, batch.actions,
                                                  batch.task_ids, capture_intermediates=True, mutable=True)
         else:
@@ -180,7 +203,7 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
         critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
 
-        info = {
+        loss_info = {
             "critic_loss": critic_loss,
             "q_mean": q_value_target.mean(),
             "q_min": q_value_target.min(),
@@ -190,13 +213,14 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
             # "critic_agnorm": jnp.sqrt((action_grad**2).sum(-1)).mean(0),
         }
 
-        if compute_per_layer_metrics:
-            effective_rank = compute_weight_metrics_pre_layer(intermedate)
-            dead_neurons = compute_activation_metrics_per_layer(intermedate)
-            per_layer_info = merge_trees_overwrite(dead_neurons, effective_rank)
-            info = info | per_layer_info
+        if compute_per_layer:
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params)
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
+            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
+            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
+            loss_info = loss_info | flattened_per_layer_metrics
 
-        return critic_loss, info
+        return critic_loss, loss_info
 
     new_critic, info = critic.apply_gradient(critic_loss_fn)
     info["critic_gnorm"] = info.pop("grad_norm")
@@ -221,6 +245,7 @@ def update_temperature(temp: Model, entropy: float, target_entropy: float):
     new_temp, info = temp.apply_gradient(temperature_loss_fn)
     info.pop('grad_norm')
     return new_temp, info
+
 
 
 # import functools
