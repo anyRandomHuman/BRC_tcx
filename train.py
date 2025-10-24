@@ -52,7 +52,7 @@ def main(_):
     else:
         eval_env = None
         
-    eval_interval = FLAGS.eval_interval if FLAGS.offline_evaluation else 5000
+    eval_interval = FLAGS.eval_interval
         
     # Kwargs setup
     kwargs = {}

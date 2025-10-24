@@ -36,8 +36,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
+flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
+flags.DEFINE_integer('eval_interval', 1027, 'Eval interval.')
 flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
@@ -45,7 +45,7 @@ flags.DEFINE_integer('start_training', int(1026),'Number of training steps to st
 flags.DEFINE_string('env_names', 'dog-run', 'Environment name.')
 flags.DEFINE_boolean('evaluate', False, 'Whether to evaluate')
 flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
-flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
+flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
@@ -72,7 +72,7 @@ def main(_):
     else:
         eval_env = None
 
-    eval_interval = FLAGS.eval_interval if FLAGS.offline_evaluation else 5000
+    eval_interval = FLAGS.eval_interval
         
     # Kwargs setup
     kwargs = {}
