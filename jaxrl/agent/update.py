@@ -155,15 +155,15 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     # params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
     # info |= params_info
     #
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    features_info_copy = deepcopy(features_info)
-    for key in features_info.keys():
-        if 'flat' in key:
-            features_info_copy.pop(key)
-    info |= features_info_copy
-
-    actor_pnorm = tree_norm(actor.params)
-    info['actor_pnorm'] = actor_pnorm
+    # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    # features_info_copy = deepcopy(features_info)
+    # for key in features_info.keys():
+    #     if 'flat' in key:
+    #         features_info_copy.pop(key)
+    # info |= features_info_copy
+    #
+    # actor_pnorm = tree_norm(actor.params)
+    # info['actor_pnorm'] = actor_pnorm
 
     return info
 
@@ -257,8 +257,8 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     }
     # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
     # info |= param_metrics
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    info |= feature_metrics
+    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    # info |= feature_metrics
     return info
 
 
