@@ -69,32 +69,27 @@ def _grad_conflict_tree_func(grads):
     fgrads1 = fgrads[0]  #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
     unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads)  #(1,b,2) (1,b)
-    conflict_count = unnormed_cosine_similaritiy.sum(axis=0).mean()
+    conflit_mask = jnp.where(unnormed_cosine_similaritiy < 0, 1, 0)
+    conflict_count = conflit_mask.sum(axis=0).mean()
     return {'conflict_rate': conflict_count / sgrads.shape[0]}
 
 
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
-def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=is_leaf_2d):
+def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
     if remove_ln:
         remove_from_tree(grads)
-    if is_leaf is not None:
-        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
-    else:
-        conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
+    conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     conflict_tree = {f'{network_name}': conflict_tree}
     fc = flatten_tree(conflict_tree)
     return fc
 
 
-def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=is_leaf_2d):
+def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
     if remove_ln:
         remove_from_tree(tree)
-    if is_leaf is not None:
-        return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
-    else:
-        return_tree = jax.tree.map(tree_func, tree)
+    return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
     prune_single_child_nodes(return_tree)
     return flatten_tree({f'{network_name}': return_tree})
 
@@ -144,17 +139,16 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['grad_norm'] = grad_norm
     conflicts = compute_grad_conflict(grad, network_name)
     info = info|conflicts
-    #
-    # loss_entropy = loss_entropy_intermediate[0]
-    # loss_entropy = jnp.array(loss_entropy)
-    #
-    # info['entropy'] = loss_entropy[:,0].mean()
-    # info['actor_loss'] = loss_entropy[:,1].mean()
-    #
-    # intermediate = loss_entropy_intermediate[1]
-    #
-    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
-    # info |= params_info
+
+    loss_entropy = loss_entropy_intermediate[0]
+    loss_entropy = jnp.array(loss_entropy)
+
+    info['entropy'] = loss_entropy[:,0].mean()
+    info['actor_loss'] = loss_entropy[:,1].mean()
+
+    intermediate = loss_entropy_intermediate[1]
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    info |= params_info
     #
     # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # features_info_copy = deepcopy(features_info)
@@ -166,8 +160,6 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     # actor_pnorm = tree_norm(actor.params)
     # info['actor_pnorm'] = actor_pnorm
 
-    #TODO:remove
-    info['entropy'] = jnp.array([0])
     return info
 
 
@@ -247,19 +239,19 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     info = {}
     info |= compute_grad_conflict(grad_trees, network_name)
 
-    # critic_loss = loss_intermediate[0].mean()
-    # intermediate = loss_intermediate[1]
-    #
-    # info |= {
-    #     "critic_loss": critic_loss,
-    #     "q_mean": q_value_target.mean(),
-    #     "q_min": q_value_target.min(),
-    #     "q_max": q_value_target.max(),
-    #     "r": batch.rewards.mean(),
-    #     "critic_pnorm": tree_norm(critic.params),
-    # }
-    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
-    # info |= param_metrics
+    critic_loss = loss_intermediate[0].mean()
+    intermediate = loss_intermediate[1]
+
+    info |= {
+        "critic_loss": critic_loss,
+        "q_mean": q_value_target.mean(),
+        "q_min": q_value_target.min(),
+        "q_max": q_value_target.max(),
+        "r": batch.rewards.mean(),
+        "critic_pnorm": tree_norm(critic.params),
+    }
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    info |= param_metrics
     # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # info |= feature_metrics
     return info
