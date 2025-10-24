@@ -68,8 +68,11 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
 @jax.jit
 def _grad_conflict_tree_func(grads):
-    #grad shape (1, batch, num critic=2, in, out)
     sgrads = jnp.squeeze(grads, axis=0) if grads.shape[0] == 1 else grads
+    if not hasattr(grads, 'shape') or not len(grads.shape) == 3:
+        return {'conflict_rate': -1}
+    #grad shape (1, batch, num critic=2, in, out)
+
     fgrads = jnp.reshape(sgrads, sgrads.shape[:-2] + (-1,))  #shape critic(1, b, 2, n*m) actor(b, n*m)
     fgrads1 = fgrads[0]  #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
@@ -91,7 +94,6 @@ def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
     return fc
 
 
-@jax.jit
 def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
     return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
     # remove_from_tree(return_tree)
