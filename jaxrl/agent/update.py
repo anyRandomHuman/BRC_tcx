@@ -79,7 +79,7 @@ def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=is_leaf_2
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
-    conflict_tree = {f'{network_name}': fc}
+    conflict_tree = {f'{network_name}': conflict_tree}
     fc = flatten_tree(conflict_tree)
     return fc
     
@@ -140,11 +140,11 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['entropy'] = loss_entropy[:,0].mean()
     info['actor_loss'] = loss_entropy[:,1].mean()
         
-    intermedate = loss_entropy_intermediate[1]
+    intermediate = loss_entropy_intermediate[1]
     
     
     params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate, network_name)
+    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     features_info_copy = deepcopy(features_info)
     for key in features_info.keys():
         if 'flat' in key:
@@ -239,7 +239,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "critic_pnorm": tree_norm(critic.params),
     }
     param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate, network_name)
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     info |= param_metrics
     info |= feature_metrics
     return info

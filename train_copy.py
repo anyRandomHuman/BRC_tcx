@@ -33,6 +33,7 @@ FLAGS = flags.FLAGS
 # flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
 # flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
 # flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
+# flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
 
 flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
