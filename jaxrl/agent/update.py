@@ -10,6 +10,11 @@ from copy import deepcopy
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
+    if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 2):
+        return {
+        'effective_rank': 0,
+        'parameter_norm': 0
+    }
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
     cumsum = jnp.cumsum(sing_values)
     nuclear_norm = jnp.sum(sing_values)
@@ -87,9 +92,9 @@ def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
 
 
 def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
+    return_tree = jax.tree.map(tree_func, tree)
     if remove_ln:
-        remove_from_tree(tree)
-    return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+        remove_from_tree(return_tree)
     prune_single_child_nodes(return_tree)
     return flatten_tree({f'{network_name}': return_tree})
 
@@ -147,7 +152,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['actor_loss'] = loss_entropy[:,1].mean()
 
     intermediate = loss_entropy_intermediate[1]
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
     info |= params_info
     #
     # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
@@ -250,7 +255,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name, is_leaf=is_leaf_2d)
     info |= param_metrics
     # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # info |= feature_metrics
