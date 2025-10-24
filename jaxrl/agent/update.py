@@ -84,32 +84,19 @@ def is_leaf_2d(x):
 
 
 def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
-    remove_from_tree(grads)
+    # remove_from_tree(grads)
     conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     conflict_tree = {f'{network_name}': conflict_tree}
     fc = flatten_tree(conflict_tree)
     return fc
 
 
-def compute_per_layer_activations(tree, network_name, remove_ln=True, is_leaf=None):
-    return_tree = jax.tree.map(_activation_metric_tree_func, tree, is_leaf=is_leaf)
-    remove_from_tree(return_tree)
-    prune_single_child_nodes(return_tree)
+@jax.jit
+def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
+    return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+    # remove_from_tree(return_tree)
+    # prune_single_child_nodes(return_tree)
     return flatten_tree({f'{network_name}': return_tree})
-
-
-def compute_per_layer_params(tree, network_name, remove_ln=True, is_leaf=None):
-    return_tree = jax.tree.map(_weight_metric_tree_func, tree, is_leaf=is_leaf)
-    remove_from_tree(return_tree)
-    prune_single_child_nodes(return_tree)
-    return flatten_tree({f'{network_name}': return_tree})
-
-# @jax.jit
-# def compute_per_layer_parameters(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
-#     return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
-#     remove_from_tree(return_tree)
-#     prune_single_child_nodes(return_tree)
-#     return flatten_tree({f'{network_name}': return_tree})
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -165,8 +152,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['actor_loss'] = loss_entropy[:,1].mean()
 
     intermediate = loss_entropy_intermediate[1]
-    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
-    params_info = compute_per_layer_params(actor.params, network_name, is_leaf=is_leaf_2d)
+    params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
+    # params_info = compute_per_layer_params(actor.params, network_name, is_leaf=is_leaf_2d)
     info |= params_info
     #
     # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
@@ -272,9 +259,9 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_params(critic.params, network_name)
+    # param_metrics = compute_per_layer_params(critic.params, network_name)
 
-    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
+    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
     info |= param_metrics
     # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # info |= feature_metrics
