@@ -120,6 +120,7 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
     return inputs
 
 
+@functools.partial(jax.jit, static_argnames=('num_bins', 'v_max', 'multitask'))
 def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                    num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
@@ -149,8 +150,6 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     info = {}
     network_name = 'actor'
-
-    print('computing gradient')
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy_intermediate = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
 
@@ -182,7 +181,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     return info
 
-
+@functools.partial(jax.jit, static_argnames=('num_bins', 'v_max', 'multitask'))
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                  num_bins: int, v_max: float, multitask: bool, evaluate=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
@@ -213,7 +212,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
     return new_actor, info
 
 
-
+@functools.partial(jax.jit, static_argnames=('num_bins', 'v_max', 'multitask'))
 def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                     temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     #note that batch size is always 32
@@ -337,6 +336,7 @@ def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: 
     return new_critic, info
 
 
+@functools.partial(jax.jit, static_argnames=('num_bins', 'v_max', 'multitask'))
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                   temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
