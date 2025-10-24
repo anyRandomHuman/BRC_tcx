@@ -57,15 +57,17 @@ def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
 
-def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=is_leaf_2d):
-    if remove_ln:
-        remove_from_tree(tree)
-    if is_leaf is not None:
-        dead = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
-    else:
-        dead = jax.tree.map(tree_func, tree)
-    return prune_single_child_nodes(dead)
+def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=None):
+    # if remove_ln:
+    #     remove_from_tree(tree)
+    # if is_leaf is not None:
+    #     dead = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+    # else:
+    #     dead = jax.tree.map(tree_func, tree)
+    # return prune_single_child_nodes(output)
 
+    output = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+    return  output
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -83,7 +85,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
     def actor_loss_fn(actor_params: Params):
         # changes for computing efective rank and dead neurons
         if compute_per_layer:
-            dist, intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)
+            dist, param_intermedate = actor.apply({'params': actor_params}, inputs, capture_intermediates=True, mutable=True)
         else:
             dist = actor.apply({'params': actor_params}, inputs)
         actions, log_probs = dist.sample_and_log_prob(seed=key)
@@ -102,6 +104,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         # changes for computing efective rank and dead neurons
 
         if compute_per_layer:
+            intermedate = param_intermedate[1]
             param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
             feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
             per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)

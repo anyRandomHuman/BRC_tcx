@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=00:05:00
+#SBATCH --time=00:10:00
 #SBATCH --partition=gpu_a100_short
 #SBATCH --gres=gpu:1
 
@@ -7,7 +7,7 @@
 module load  devel/cuda/12.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
-conda activate dime
+conda activate py10
 #conda activate DMC
 
 export MUJOCO_GL=egl
