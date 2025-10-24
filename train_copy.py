@@ -143,6 +143,7 @@ def main(_):
                 os.remove(f'{submit_dir}/pause_test.flag')
                 break
             if FLAGS.assigned_time - run_time < 180:
+                print('runtime insufficient, quitting')
                 replay_buffer.save(save_path)
                 break
             obs = sample(i + FLAGS.start_training, obs)
