@@ -156,7 +156,10 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     #
     # actor_pnorm = tree_norm(actor.params)
     # info['actor_pnorm'] = actor_pnorm
-    
+
+
+    #TODO:remove
+    info['entropy'] = 0
     return info
 
 
@@ -244,7 +247,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     # info |= param_metrics
     # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # info |= feature_metrics
-    # return info
+    return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
            temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
