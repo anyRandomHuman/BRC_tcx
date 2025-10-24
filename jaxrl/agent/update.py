@@ -143,13 +143,14 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     intermediate = loss_entropy_intermediate[1]
     
     
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    # info |= params_info
+
     features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     features_info_copy = deepcopy(features_info)
     for key in features_info.keys():
         if 'flat' in key:
             features_info_copy.pop(key)
-    info |= params_info
     info |= features_info_copy
 
     actor_pnorm = tree_norm(actor.params)
@@ -238,9 +239,9 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    # info |= param_metrics
     feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    info |= param_metrics
     info |= feature_metrics
     return info
 
