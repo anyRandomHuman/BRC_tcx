@@ -27,8 +27,10 @@ def _get_infos(
     multitask: bool,
 ):
     rng, actor_key, critic_key = jax.random.split(rng, 3)
-    critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
-    actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask) 
+    # critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
+    # actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
+    critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, compute_per_layer_metrics=True)
+    actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask, compute_per_layer_metrics=True)
     _, alpha_info = update_temperature(temp, actor_info['entropy'], target_entropy)
     return {
         **critic_info,
