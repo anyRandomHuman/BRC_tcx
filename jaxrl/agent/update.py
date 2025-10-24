@@ -131,13 +131,13 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
     
-    # loss_entropy = jnp.array(loss_entropy)
-    # grad_norm = tree_norm(grad)
-    # info['grad_norm'] = grad_norm
-    # conflicts = compute_grad_conflict(grad, network_name)
-    # info = info|conflicts
-    # info['entropy'] = loss_entropy[:,0].mean()
-    # info['actor_loss'] = loss_entropy[:,1].mean()
+    loss_entropy = jnp.array(loss_entropy)
+    grad_norm = tree_norm(grad)
+    info['grad_norm'] = grad_norm
+    conflicts = compute_grad_conflict(grad, network_name)
+    info = info|conflicts
+    info['entropy'] = loss_entropy[:,0].mean()
+    info['actor_loss'] = loss_entropy[:,1].mean()
         
     # _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
@@ -224,9 +224,9 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
     info = {}
-    # info = compute_grad_conflict(grad_trees, network_name)
+    info = compute_grad_conflict(grad_trees, network_name)
     
-    # # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
+    # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
     # q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
     # q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
     # critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
