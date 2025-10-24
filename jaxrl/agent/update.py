@@ -79,8 +79,9 @@ def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=is_leaf_2
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     else:
         conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads)
+    conflict_tree = {f'{network_name}': fc}
     fc = flatten_tree(conflict_tree)
-    return {f'{network_name} gradient conflict': fc}
+    return fc
     
 def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=is_leaf_2d):
     if remove_ln: 
@@ -139,7 +140,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['entropy'] = loss_entropy[:,0].mean()
     info['actor_loss'] = loss_entropy[:,1].mean()
         
-    # _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
+    _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
     
     # params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
@@ -226,8 +227,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     info = {}
     info = compute_grad_conflict(grad_trees, network_name)
     
-    # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
-    # q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
+    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
     # q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
     # critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
     
