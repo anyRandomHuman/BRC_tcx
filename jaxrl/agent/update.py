@@ -92,7 +92,7 @@ def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
 
 
 def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
-    return_tree = jax.tree.map(tree_func, tree)
+    return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
     if remove_ln:
         remove_from_tree(return_tree)
     prune_single_child_nodes(return_tree)
@@ -152,18 +152,18 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     info['actor_loss'] = loss_entropy[:,1].mean()
 
     intermediate = loss_entropy_intermediate[1]
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
-    info |= params_info
+    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
+    # info |= params_info
     #
-    # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    # features_info_copy = deepcopy(features_info)
-    # for key in features_info.keys():
-    #     if 'flat' in key:
-    #         features_info_copy.pop(key)
-    # info |= features_info_copy
-    #
-    # actor_pnorm = tree_norm(actor.params)
-    # info['actor_pnorm'] = actor_pnorm
+    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    features_info_copy = deepcopy(features_info)
+    for key in features_info.keys():
+        if 'flat' in key:
+            features_info_copy.pop(key)
+    info |= features_info_copy
+
+    actor_pnorm = tree_norm(actor.params)
+    info['actor_pnorm'] = actor_pnorm
 
     return info
 
@@ -255,10 +255,10 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name, is_leaf=is_leaf_2d)
-    info |= param_metrics
-    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    # info |= feature_metrics
+    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
+    # info |= param_metrics
+    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    info |= feature_metrics
     return info
 
 
@@ -380,23 +380,3 @@ def update_temperature(temp: Model, entropy: float, target_entropy: float):
     new_temp, info = temp.apply_gradient(temperature_loss_fn)
     info.pop('grad_norm')
     return new_temp, info
-
-
-'''
-key = agent.rng
-actor = agent.actor
-target_critic = agent.target_critic
-critic = agent.critic
-temp = agent.temp
-batch = Batch(
-    observations=batches.observations[0],
-    actions=batches.actions[0],
-    rewards=batches.rewards[0],
-    masks=batches.masks[0],
-    next_observations=batches.next_observations[0],
-    task_ids=batches.task_ids[0])
-discount = agent.discount
-num_bins = agent.num_bins
-v_max = agent.v_max
-multitask = agent.multitask
-'''
