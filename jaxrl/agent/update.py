@@ -10,22 +10,22 @@ from copy import deepcopy
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
-    if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 2):
-        return {
-        'effective_rank': 0,
-        'parameter_norm': 0
-    }
-    sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
-    cumsum = jnp.cumsum(sing_values)
-    nuclear_norm = jnp.sum(sing_values)
-    approximate_rank_threshold = 1.0 - rank_delta
-    threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
-    effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
-
+    # if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 2):
+    #     return {
+    #     'effective_rank': 0,
+    #     'parameter_norm': 0
+    # }
+    # sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
+    # cumsum = jnp.cumsum(sing_values)
+    # nuclear_norm = jnp.sum(sing_values)
+    # approximate_rank_threshold = 1.0 - rank_delta
+    # threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
+    # effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
+    #
     pnorm = jnp.sqrt(sum(weight_matrix ** 2).sum())
 
     return_dict = {
-        'effective_rank': effective_rank,
+        # 'effective_rank': effective_rank,
         'parameter_norm': pnorm
     }
     return return_dict
@@ -82,22 +82,36 @@ def _grad_conflict_tree_func(grads):
 def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
+@jax.jit
 def compute_grad_conflict(grads, network_name, remove_ln=True, is_leaf=None):
-    if remove_ln:
-        remove_from_tree(grads)
+    remove_from_tree(grads)
     conflict_tree = jax.tree.map(_grad_conflict_tree_func, grads, is_leaf=is_leaf)
     conflict_tree = {f'{network_name}': conflict_tree}
     fc = flatten_tree(conflict_tree)
     return fc
 
 
-def compute_per_layer_metrics(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
-    return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
-    if remove_ln:
-        remove_from_tree(return_tree)
+@jax.jit
+def compute_per_layer_activations(tree, network_name, remove_ln=True, is_leaf=None):
+    return_tree = jax.tree.map(_activation_metric_tree_func, tree, is_leaf=is_leaf)
+    remove_from_tree(return_tree)
     prune_single_child_nodes(return_tree)
     return flatten_tree({f'{network_name}': return_tree})
 
+
+@jax.jit
+def compute_per_layer_params(tree, network_name, remove_ln=True, is_leaf=None):
+    return_tree = jax.tree.map(_weight_metric_tree_func, tree, is_leaf=is_leaf)
+    remove_from_tree(return_tree)
+    prune_single_child_nodes(return_tree)
+    return flatten_tree({f'{network_name}': return_tree})
+
+# @jax.jit
+# def compute_per_layer_parameters(tree_func, tree, network_name, remove_ln=True, is_leaf=None):
+#     return_tree = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
+#     remove_from_tree(return_tree)
+#     prune_single_child_nodes(return_tree)
+#     return flatten_tree({f'{network_name}': return_tree})
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -137,6 +151,8 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     info = {}
     network_name = 'actor'
+
+    print('computing gradient')
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy_intermediate = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
 
@@ -153,7 +169,9 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     intermediate = loss_entropy_intermediate[1]
     # params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
-    # info |= params_info
+    params_info = compute_per_layer_params(actor.params, network_name, is_leaf=is_leaf_2d)
+
+    info |= params_info
     #
     # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # features_info_copy = deepcopy(features_info)
@@ -167,7 +185,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     return info
 
-
+@jax.jit
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                  num_bins: int, v_max: float, multitask: bool, evaluate=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
@@ -197,6 +215,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
     return new_actor, info
 
 
+@jax.jit
 def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                     temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     #note that batch size is always 32
@@ -316,7 +335,7 @@ def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: 
     info["critic_gnorm"] = info.pop("grad_norm")
     return new_critic, info
 
-
+@jax.jit
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                   temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
@@ -368,7 +387,7 @@ def update_target_critic(critic: Model, target_critic: Model, tau: float):
         target_critic.params)
     return target_critic.replace(params=new_target_params)
 
-
+@jax.jit
 def update_temperature(temp: Model, entropy: float, target_entropy: float):
     def temperature_loss_fn(temp_params):
         temperature = temp.apply({'params': temp_params})
