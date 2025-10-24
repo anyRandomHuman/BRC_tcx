@@ -170,7 +170,6 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     intermediate = loss_entropy_intermediate[1]
     # params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name, is_leaf=is_leaf_2d)
     params_info = compute_per_layer_params(actor.params, network_name, is_leaf=is_leaf_2d)
-
     info |= params_info
     #
     # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
@@ -274,8 +273,10 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
+    param_metrics = compute_per_layer_params(critic.params, network_name)
+
     # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
-    # info |= param_metrics
+    info |= param_metrics
     # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
     # info |= feature_metrics
     return info
