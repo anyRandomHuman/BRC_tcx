@@ -136,26 +136,26 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     # conflicts = compute_grad_conflict(grad, network_name)
     # info = info|conflicts
 
-    loss_entropy = loss_entropy_intermediate[0]
-    loss_entropy = jnp.array(loss_entropy)
-
-    info['entropy'] = loss_entropy[:,0].mean()
-    info['actor_loss'] = loss_entropy[:,1].mean()
-        
-    intermediate = loss_entropy_intermediate[1]
-    
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
-    info |= params_info
-
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    features_info_copy = deepcopy(features_info)
-    for key in features_info.keys():
-        if 'flat' in key:
-            features_info_copy.pop(key)
-    info |= features_info_copy
-
-    actor_pnorm = tree_norm(actor.params)
-    info['actor_pnorm'] = actor_pnorm
+    # loss_entropy = loss_entropy_intermediate[0]
+    # loss_entropy = jnp.array(loss_entropy)
+    #
+    # info['entropy'] = loss_entropy[:,0].mean()
+    # info['actor_loss'] = loss_entropy[:,1].mean()
+    #
+    # intermediate = loss_entropy_intermediate[1]
+    #
+    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    # info |= params_info
+    #
+    # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    # features_info_copy = deepcopy(features_info)
+    # for key in features_info.keys():
+    #     if 'flat' in key:
+    #         features_info_copy.pop(key)
+    # info |= features_info_copy
+    #
+    # actor_pnorm = tree_norm(actor.params)
+    # info['actor_pnorm'] = actor_pnorm
     
     return info
 
@@ -229,22 +229,22 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     info = {}
     # info = compute_grad_conflict(grad_trees, network_name)
     
-    critic_loss = loss_intermediate[0].mean()
-    intermediate = loss_intermediate[1]
-    
-    info |= {
-        "critic_loss": critic_loss,
-        "q_mean": q_value_target.mean(),
-        "q_min": q_value_target.min(),
-        "q_max": q_value_target.max(),
-        "r": batch.rewards.mean(),
-        "critic_pnorm": tree_norm(critic.params),
-    }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
-    info |= param_metrics
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    info |= feature_metrics
-    return info
+    # critic_loss = loss_intermediate[0].mean()
+    # intermediate = loss_intermediate[1]
+    #
+    # info |= {
+    #     "critic_loss": critic_loss,
+    #     "q_mean": q_value_target.mean(),
+    #     "q_min": q_value_target.min(),
+    #     "q_max": q_value_target.max(),
+    #     "r": batch.rewards.mean(),
+    #     "critic_pnorm": tree_norm(critic.params),
+    # }
+    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    # info |= param_metrics
+    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
+    # info |= feature_metrics
+    # return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
            temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
