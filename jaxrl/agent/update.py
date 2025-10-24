@@ -135,7 +135,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     # info['grad_norm'] = grad_norm
     # conflicts = compute_grad_conflict(grad, network_name)
     # info = info|conflicts
-
+    #
     # loss_entropy = loss_entropy_intermediate[0]
     # loss_entropy = jnp.array(loss_entropy)
     #
@@ -159,7 +159,7 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
 
     #TODO:remove
-    info['entropy'] = 0
+    info['entropy'] = jnp.array([0])
     return info
 
 
