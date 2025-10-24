@@ -127,31 +127,32 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         return actor_loss, jnp.array([actor_loss, -log_probs.mean()])
     
     info = {}
-    
+    network_name = 'actor'
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
-    loss_entropy = jnp.array(loss_entropy)
-
-    network_name = 'actor'
-    grad_norm = tree_norm(grad)
-    info['grad_norm'] = grad_norm
-    info['entropy'] = loss_entropy[:,0].mean()
-    conflicts = compute_grad_conflict(grad, network_name)
-    info = info|conflicts
-    _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
     
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
-    features_info_copy = deepcopy(features_info)
-    for key in features_info.keys():
-        if 'flat' in key:
-            features_info_copy.pop(key)
-    info |= params_info
-    info |= features_info_copy
+    # loss_entropy = jnp.array(loss_entropy)
+    # grad_norm = tree_norm(grad)
+    # info['grad_norm'] = grad_norm
+    # conflicts = compute_grad_conflict(grad, network_name)
+    # info = info|conflicts
+    # info['entropy'] = loss_entropy[:,0].mean()
+    # info['actor_loss'] = loss_entropy[:,1].mean()
+        
+    # _, intermedate = actor.apply({'params': actor.params}, inputs, capture_intermediates=True, mutable=True)
+    
+    
+    # params_info = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(actor.params), network_name)
+    # features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
+    # features_info_copy = deepcopy(features_info)
+    # for key in features_info.keys():
+    #     if 'flat' in key:
+    #         features_info_copy.pop(key)
+    # info |= params_info
+    # info |= features_info_copy
 
-    actor_pnorm = tree_norm(actor.params)
-    info['actor_pnorm'] = actor_pnorm
-    info['actor_loss'] = loss_entropy[:,1].mean()
+    # actor_pnorm = tree_norm(actor.params)
+    # info['actor_pnorm'] = actor_pnorm
     
     return info
 
@@ -222,25 +223,26 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     network_name = 'critic'
     grad_fn = jax.vmap(jax.grad(critic_loss_fn), in_axes=(None, 0,0,0,0))
     grad_trees = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids, target_probs)
-    info = compute_grad_conflict(grad_trees, network_name)
+    info = {}
+    # info = compute_grad_conflict(grad_trees, network_name)
     
-    # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
-    q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
-    q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
-    critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
+    # # _, info = update_critic(key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, True)
+    # q_logits, intermedate = critic.apply({'params': critic.params}, batch.observations, batch.actions, batch.task_ids, capture_intermediates=True, mutable=True)
+    # q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
+    # critic_loss = -(target_probs[None] * q_logprobs).sum(-1).mean(-1).sum(-1)
     
-    info |= {
-        "critic_loss": critic_loss,
-        "q_mean": q_value_target.mean(),
-        "q_min": q_value_target.min(),
-        "q_max": q_value_target.max(),
-        "r": batch.rewards.mean(),
-        "critic_pnorm": tree_norm(critic.params),
-    }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
-    info |= param_metrics
-    info |= feature_metrics
+    # info |= {
+    #     "critic_loss": critic_loss,
+    #     "q_mean": q_value_target.mean(),
+    #     "q_min": q_value_target.min(),
+    #     "q_max": q_value_target.max(),
+    #     "r": batch.rewards.mean(),
+    #     "critic_pnorm": tree_norm(critic.params),
+    # }
+    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, deepcopy(critic.params), network_name)
+    # feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network_name)
+    # info |= param_metrics
+    # info |= feature_metrics
     return info
 
 def update_critic_old(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
