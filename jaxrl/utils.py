@@ -81,6 +81,7 @@ def remove_from_tree(tree, to_remove_keys=['LayerNorm', 'bias', 'flat']):
                 break
             elif isinstance(tree[key], dict):
                 remove_from_tree(tree[key])
+    return tree
 
 @flax.struct.dataclass
 class SaveState:

@@ -137,31 +137,32 @@ def main(_):
     import  time
     start_time = time.time()
     pause_iter = -1
-    with open(f'{save_path}/pause.txt', 'w') as f:
-        for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
-            run_time = time.time() - start_time
-            if os.path.exists(f'{submit_dir}/pause_test.flag'):
-                pause_iter = i
-                os.remove(f'{submit_dir}/pause_test.flag')
-                break
-            if FLAGS.assigned_time - run_time < 180:
-                print('runtime insufficient, quitting')
-                replay_buffer.save(save_path)
-                break
-            obs = sample(i + FLAGS.start_training, obs)
-            batches = replay_buffer.sample(FLAGS.batch_size,
-                                           FLAGS.updates_per_step)  # sample randomly from all data,not one per task
-            batches = reward_normalizer.normalize(batches, agent.get_temperature())
-            _ = agent.update(batches, FLAGS.updates_per_step, i)
-            if i % eval_interval == 0 and i >= FLAGS.start_training:
-                info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
-                                                    render=FLAGS.render)
-                # print(f'info_dict: {info_dict}')
-                # agent.save(save_path)
-                # replay_buffer.save(save_path)
+
+    for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
+        run_time = time.time() - start_time
+        if os.path.exists(f'{submit_dir}/pause_test.flag'):
+            pause_iter = i
+            os.remove(f'{submit_dir}/pause_test.flag')
+            break
+        if FLAGS.assigned_time - run_time < 300:
+            with open(f'{save_path}/pause.txt', 'w') as f:
                 f.write(f'{i}')
-                # f.write(str(info_dict))
-        f.write(f'{FLAGS.max_steps}')
+            print('runtime insufficient, quitting')
+            replay_buffer.save(save_path)
+            break
+        obs = sample(i + FLAGS.start_training, obs)
+        batches = replay_buffer.sample(FLAGS.batch_size,
+                                       FLAGS.updates_per_step)  # sample randomly from all data,not one per task
+        batches = reward_normalizer.normalize(batches, agent.get_temperature())
+        _ = agent.update(batches, FLAGS.updates_per_step, i)
+        if i % eval_interval == 0 and i >= FLAGS.start_training:
+            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
+                                                render=FLAGS.render)
+            # print(f'info_dict: {info_dict}')
+            # agent.save(save_path)
+            # replay_buffer.save(save_path)
+
+            # f.write(str(info_dict))
     agent.save(save_path)
     # replay_buffer.save(save_path)
 
