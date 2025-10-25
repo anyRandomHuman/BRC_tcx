@@ -7,6 +7,11 @@ from jaxrl.utils import Batch, Model, Params, PRNGKey, tree_norm, prune_single_c
 
 @jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
+    if not hasattr(weight_matrix, 'shape') or len(weight_matrix.shape) != 2:
+        return {
+        'effective_rank': -1,
+        'parameter_norm': -1
+    }
     sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
     cumsum = jnp.cumsum(sing_values)
     nuclear_norm = jnp.sum(sing_values)
@@ -25,7 +30,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 @jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.98):
-    if not hasattr(activation, 'shape') or len(activation.shape) != 2:
+    if not hasattr(activation, 'shape') or (len(activation.shape) != 2 and len(activation.shape) !=3):
         return {
             'dead_neurons': 0,
             'dead_percentage': 0.0,
@@ -57,7 +62,7 @@ def is_leaf_2d(x):
     return hasattr(x, 'shape') and len(x.shape) == 2
 
 
-def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=None):
+def compute_per_layer_metrics(tree_func, tree, network, remove_ln=True, is_leaf=None):
     # if remove_ln:
     #     remove_from_tree(tree)
     # if is_leaf is not None:
@@ -67,7 +72,7 @@ def compute_per_layer_metrics(tree_func, tree, remove_ln=True, is_leaf=None):
     # return prune_single_child_nodes(output)
 
     output = jax.tree.map(tree_func, tree, is_leaf=is_leaf)
-    return  output
+    return  {network : output}
 
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
@@ -104,12 +109,14 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
         # changes for computing efective rank and dead neurons
 
         if compute_per_layer:
-            intermedate = param_intermedate[1]
-            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params)
-            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
-            loss_info = loss_info | flattened_per_layer_metrics
+            network = 'actor'
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, actor_params, network)
+            param_metrics = flatten_tree(param_metrics)
+
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, param_intermedate['intermediates'], network)
+            feature_metrics = flatten_tree(feature_metrics)
+            loss_info |= param_metrics
+            loss_info |=feature_metrics
 
         return actor_loss, loss_info
 
@@ -217,11 +224,11 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
         }
 
         if compute_per_layer:
-            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params)
-            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate)
-            per_layer_metrics = merge_trees_overwrite(feature_metrics, param_metrics)
-            flattened_per_layer_metrics = flatten_tree(per_layer_metrics)
-            loss_info = loss_info | flattened_per_layer_metrics
+            network = 'critic'
+            param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic_params, network)
+            feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermedate['intermediates'], network)
+            loss_info |= flatten_tree(param_metrics)
+            loss_info |= flatten_tree(feature_metrics)
 
         return critic_loss, loss_info
 
