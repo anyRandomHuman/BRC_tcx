@@ -79,12 +79,6 @@ def _grad_conflict_tree_func(grads):
     return {'conflict_rate': conflict_count / sgrads.shape[0]}
 
 
-def compute_per_layer_metrics(tree_func, tree, network_name):
-    return_tree = jax.tree.map(tree_func, tree)
-    # remove_from_tree(return_tree)
-    # prune_single_child_nodes(return_tree)
-    return flatten_tree({f'{network_name}': return_tree})
-
 @functools.partial(jax.jit, static_argnames=('multitask'))
 def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.ndarray, multitask: bool):
     inputs = observations
@@ -109,38 +103,26 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
         return actor_loss, (jnp.array([actor_loss, -log_probs.mean()]), intermediate)
 
-    info = {}
-    network_name = 'actor'
+
     grad_fn = jax.vmap(jax.grad(actor_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0))
     grad, loss_entropy_intermediate = grad_fn(actor.params, batch.observations, inputs, batch.task_ids)
-
     grad_norm = tree_norm(grad)
-    info['grad_norm'] = grad_norm
-    conflicts = compute_per_layer_metrics(_grad_conflict_tree_func, grad, network_name)
-    info = info|conflicts
-
+    conflicts = jax.tree.map(_grad_conflict_tree_func, grad)
     loss_entropy = loss_entropy_intermediate[0]
     loss_entropy = jnp.array(loss_entropy)
 
-    info['entropy'] = loss_entropy[:,0].mean()
-    info['actor_loss'] = loss_entropy[:,1].mean()
-
+    info = {
+        'grad_norm': grad_norm,
+        'entropy': loss_entropy[:,0].mean(),
+        'actor_loss': loss_entropy[:,1].mean(),
+        'actor_pnorm': tree_norm(actor.params)
+    }
     intermediate = loss_entropy_intermediate[1]
-    params_info = compute_per_layer_metrics(_weight_metric_tree_func, actor.params, network_name)
-    # params_info = compute_per_layer_params(actor.params, network_name, is_leaf=is_leaf_2d)
-    info |= params_info
+    params_info = jax.tree.map(_weight_metric_tree_func, actor.params)
+    features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
 
-    features_info = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    features_info_copy = deepcopy(features_info)
-    for key in features_info.keys():
-        if 'flat' in key:
-            features_info_copy.pop(key)
-    info |= features_info_copy
-
-    actor_pnorm = tree_norm(actor.params)
-    info['actor_pnorm'] = actor_pnorm
-
-    return info
+    network_name = 'actor'
+    return info, {network_name: params_info}, {network_name: features_info}, {network_name: conflicts}
 
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                  num_bins: int, v_max: float, multitask: bool, evaluate=False):
@@ -216,13 +198,9 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     grad_fn = jax.vmap(jax.grad(critic_loss_fn, has_aux=True), in_axes=(None, 0, 0, 0, 0))
     grad, loss_intermediate = grad_fn(critic.params, batch.observations, batch.actions, batch.task_ids,
                                             target_probs)
-    info = {}
-    info |= compute_per_layer_metrics(_grad_conflict_tree_func, grad, network_name)
-
     critic_loss = loss_intermediate[0].mean()
     intermediate = loss_intermediate[1]
-
-    info |= {
+    info = {
         "critic_loss": critic_loss,
         "q_mean": q_value_target.mean(),
         "q_min": q_value_target.min(),
@@ -230,13 +208,11 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
     }
-    param_metrics = compute_per_layer_metrics(_weight_metric_tree_func,critic.params, network_name)
-
-    # param_metrics = compute_per_layer_metrics(_weight_metric_tree_func, critic.params, network_name)
-    info |= param_metrics
-    feature_metrics = compute_per_layer_metrics(_activation_metric_tree_func, intermediate['intermediates'], network_name)
-    info |= feature_metrics
-    return info
+    conflicts = jax.tree.map(_grad_conflict_tree_func, grad)
+    params_info = jax.tree.map(_weight_metric_tree_func,critic.params)
+    features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
+    network_name = 'critic'
+    return info, {network_name: params_info}, {network_name: features_info}, {network_name: conflicts}
 
 
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
