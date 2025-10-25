@@ -15,7 +15,7 @@ from jaxrl.env_names import get_environment_list
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
-flags.DEFINE_integer('seed', 0, 'Random seed.')
+flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
 flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
@@ -92,7 +92,7 @@ def main(_):
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}'
+    save_path = f'{save_dir}/{FLAGS.env_names}_/{FLAGS.seed}'
     os.makedirs(save_path, exist_ok=True)
     
 
