@@ -1,5 +1,6 @@
 import numpy as np
 import wandb
+from jaxrl.utils import flatten_tree, remove_from_tree, prune_single_child_nodes
 
 
 def log_to_wandb(step: int, infos: dict, suffix: str = ''):
@@ -57,9 +58,17 @@ class EpisodeRecorder:
     def log(self, FLAGS, agent, replay_buffer, reward_normalizer, step, eval_env=None, render=False, task_batch=32):
         batches_info = replay_buffer.sample_task_batches(task_batch)
         batches_info = reward_normalizer.normalize(batches_info, agent.get_temperature())
-        infos:dict = agent.get_infos(batches_info, FLAGS.evaluate)
+        critic, actor, alpha = agent.get_infos(batches_info, FLAGS.evaluate)
+        c, cp, cf, cg = critic
+        a, ap, af, ag = actor
+        cp = flatten_tree(remove_from_tree(cp))
+        cf = flatten_tree(remove_from_tree(cf))
+        cg = flatten_tree(remove_from_tree(cg))
+        ap = flatten_tree(remove_from_tree(ap))
+        af = flatten_tree(remove_from_tree(af))
+        ag = flatten_tree(remove_from_tree(ag))
         infos_online_eval = self._get_scores()
-        infos = {**infos, **infos_online_eval}
+        infos = {**critic, **actor, **alpha, **infos_online_eval, **cp, **cf,**cg,**ap,**af,**ag}
         if FLAGS.offline_evaluation:
             eval_stats = eval_env.evaluate(agent, num_episodes=FLAGS.eval_episodes, temperature=0.0, render=render)
             if render:

@@ -13,7 +13,7 @@ from jaxrl.networks import NormalTanhPolicy, DoubleCriticTest, Temperature, Doub
 from jaxrl.utils import Model, PRNGKey, Batch
 
 
-@functools.partial(jax.jit, static_argnames=('discount', 'target_entropy', 'num_bins', 'v_max', 'multitask','use_update'),)
+@functools.partial(jax.jit, static_argnames=('discount', 'target_entropy', 'num_bins', 'v_max', 'multitask','evaluate'),)
 @functools.partial(jax.vmap, in_axes=(None, None, None, None, None, 0, None, None, None, None, None, None))
 def _get_infos(
     rng: PRNGKey, 
@@ -27,21 +27,20 @@ def _get_infos(
     num_bins: int, 
     v_max: float,
     multitask: bool,
-    use_update
+    evaluate
 ):
     rng, actor_key, critic_key = jax.random.split(rng, 3)
-    if not use_update:
+    if evaluate:
         critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
         actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
+        _, alpha_info = update_temperature(temp, actor_info[0]['entropy'], target_entropy)
+
     else:
         _, critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
         _, actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
-    _, alpha_info = update_temperature(temp, actor_info['entropy'], target_entropy)
-    return {
-        **critic_info,
-        **actor_info,
-        **alpha_info,
-    }
+        _, alpha_info = update_temperature(temp, actor_info['entropy'], target_entropy)
+
+    return critic_info, actor_info, alpha_info
 
 @jax.jit
 def _get_temperature(temp):
