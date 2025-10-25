@@ -16,41 +16,42 @@ from jaxrl.env_names import get_environment_list
 
 
 FLAGS = flags.FLAGS
-#lol
 
-# flags.DEFINE_integer('seed', 0, 'Random seed.')
-# flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
-# flags.DEFINE_integer('eval_interval', 30, 'Eval interval.')
-# flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
-# flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
-# flags.DEFINE_integer('replay_buffer_size', 10, 'Replay buffer size.')
-# flags.DEFINE_integer('start_training', 15,'Number of training steps to start training.')
-# flags.DEFINE_string('env_names', 'cartpole-swingup', 'Environment name.')
-# flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
-# flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
-# flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
-# flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
-# flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
-# flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
-# flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
-# flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
+if not os.environ.get('SLURM_SUBMIT_DIR'):
 
-flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
-flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 1027, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
-flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
-flags.DEFINE_integer('start_training', int(1026),'Number of training steps to start training.')
-flags.DEFINE_string('env_names', 'h1hand-walk-v0', 'Environment name.')
-flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
-flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
-flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
-flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
-flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
-flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
-flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
+    flags.DEFINE_integer('seed', 0, 'Random seed.')
+    flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
+    flags.DEFINE_integer('eval_interval', 30, 'Eval interval.')
+    flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
+    flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
+    flags.DEFINE_integer('replay_buffer_size', 10, 'Replay buffer size.')
+    flags.DEFINE_integer('start_training', 15,'Number of training steps to start training.')
+    flags.DEFINE_string('env_names', 'cartpole-swingup', 'Environment name.')
+    flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
+    flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
+    flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
+    flags.DEFINE_integer('updates_per_step', 1, 'Number of updates per step.')
+    flags.DEFINE_integer('width_critic', 4, 'Width of the critic network.')
+    flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
+    flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
+    flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
+else:
+    flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
+    flags.DEFINE_integer('seed', 0, 'Random seed.')
+    flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
+    flags.DEFINE_integer('eval_interval', 1027, 'Eval interval.')
+    flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
+    flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
+    flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
+    flags.DEFINE_integer('start_training', int(1026),'Number of training steps to start training.')
+    flags.DEFINE_string('env_names', 'h1hand-walk-v0', 'Environment name.')
+    flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
+    flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
+    flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations with temperature=0.')
+    flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
+    flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
+    flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
+    flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -120,19 +121,20 @@ def main(_):
 
     obs = env.reset()
     start_iter = 0
-    if os.path.exists(f'{save_path}/pause.txt'):
-        try:
-            agent.load(save_path)
-            replay_buffer.load(save_path)
-            print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
-            obs = sample(start_iter, obs)
-        except:
-            for i in range(FLAGS.start_training):
-                obs = sample(i, obs)
-    else:
-        for i in range(FLAGS.start_training):
-            obs = sample(i, obs)
-
+    # if os.path.exists(f'{save_path}/pause.txt'):
+    #     try:
+    #         agent.load(save_path)
+    #         replay_buffer.load(save_path)
+    #         print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
+    #         obs = sample(start_iter, obs)
+    #     except:
+    #         for i in range(FLAGS.start_training):
+    #             obs = sample(i, obs)
+    # else:
+    #     for i in range(FLAGS.start_training):
+    #         obs = sample(i, obs)
+    for i in range(FLAGS.start_training):
+        obs = sample(i, obs)
     import  time
     start_time = time.time()
     pause_iter = -1
