@@ -27,12 +27,15 @@ def _get_infos(
     num_bins: int, 
     v_max: float,
     multitask: bool,
+use_update
 ):
     rng, actor_key, critic_key = jax.random.split(rng, 3)
-    critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
-    actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
-    # _, critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, compute_per_layer=True)
-    # _, actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask, compute_per_layer=True)
+    if not use_update:
+        critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
+        actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
+    else:
+        _, critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
+        _, actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
     _, alpha_info = update_temperature(temp, actor_info['entropy'], target_entropy)
     return {
         **critic_info,
@@ -214,7 +217,7 @@ class BRC(object):
         self.temp = temp
         return info
     
-    def get_infos(self, batch: Batch):
+    def get_infos(self, batch: Batch, use_update):
         infos = _get_infos(            
                     self.rng,
                     self.actor,
@@ -226,7 +229,8 @@ class BRC(object):
                     self.target_entropy,
                     self.num_bins,
                     self.v_max,
-                    self.multitask)
+                    self.multitask,
+        use_update)
         return infos
     
     def get_temperature(self):

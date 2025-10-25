@@ -52,16 +52,12 @@ class EpisodeRecorder:
         self.returns_online = np.zeros(self.num_seeds)
         self.goals_online = np.zeros(self.num_seeds)
         self.counts = np.zeros(self.num_seeds)
-        print(infos_online_eval)
         return infos_online_eval
     
     def log(self, FLAGS, agent, replay_buffer, reward_normalizer, step, eval_env=None, render=False, task_batch=32):
         batches_info = replay_buffer.sample_task_batches(task_batch)
         batches_info = reward_normalizer.normalize(batches_info, agent.get_temperature())
-        if FLAGS.evaluate:
-            infos:dict = agent.get_infos(batches_info)
-        else:
-            infos = {}
+        infos:dict = agent.get_infos(batches_info, FLAGS.evaluate)
         infos_online_eval = self._get_scores()
         infos = {**infos, **infos_online_eval}
         if FLAGS.offline_evaluation:
