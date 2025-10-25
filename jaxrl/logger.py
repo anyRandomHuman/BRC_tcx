@@ -4,13 +4,17 @@ import wandb
 
 def log_to_wandb(step: int, infos: dict, suffix: str = ''):
     dict_to_log = {'timestep': step}
-    
+    to_remove_keys = ['bias, flat, LayerNorm']
+
     for info_key in infos:
-        try:
-            for seed, value in enumerate(infos[info_key]):
-                dict_to_log[f'seed{seed}/{info_key}{suffix}'] = value
-        except:
-            print(f'error in {info_key}, the value is {infos[info_key]}')
+        skip= False
+        for str in to_remove_keys:
+            if str in info_key:
+                skip=True
+                break
+        if skip: continue
+        for seed, value in enumerate(infos[info_key]):
+            dict_to_log[f'seed{seed}/{info_key}{suffix}'] = value
     wandb.log(dict_to_log, step=step)
     
 def get_wandb_video(renders: np.ndarray, fps: int = 15):
@@ -55,7 +59,7 @@ class EpisodeRecorder:
         batches_info = replay_buffer.sample_task_batches(task_batch)
         batches_info = reward_normalizer.normalize(batches_info, agent.get_temperature())
         if FLAGS.evaluate:
-            infos = agent.get_infos(batches_info)
+            infos:dict = agent.get_infos(batches_info)
         else:
             infos = {}
         infos_online_eval = self._get_scores()

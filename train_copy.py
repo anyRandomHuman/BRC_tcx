@@ -36,7 +36,6 @@ if not os.environ.get('SLURM_SUBMIT_DIR'):
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
     flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
 else:
-    flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
     flags.DEFINE_integer('seed', 0, 'Random seed.')
     flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
     flags.DEFINE_integer('eval_interval', 1027, 'Eval interval.')

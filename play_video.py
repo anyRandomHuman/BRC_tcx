@@ -1,6 +1,6 @@
 import cv2
 import os
-env = 'dog-run'
+env = 'h1hand-bookshelf_simple-v0'
 index = 0
 
 

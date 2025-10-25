@@ -6,8 +6,9 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-# from jaxrl.agent.update import build_actor_input, update_actor, update_critic, update_target_critic, update_temperature, evaluate_actor, evaluate_critic
-from jaxrl.agent.update import build_actor_input, update_actor, update_critic, update_target_critic, update_temperature
+from jaxrl.agent.update import (build_actor_input, update_actor, update_critic, update_target_critic, update_temperature,
+                                evaluate_actor, evaluate_critic)
+# from jaxrl.agent.update import build_actor_input, update_actor, update_critic, update_target_critic, update_temperature
 from jaxrl.networks import NormalTanhPolicy, DoubleCriticTest, Temperature, DoubleCritic
 from jaxrl.utils import Model, PRNGKey, Batch
 
@@ -28,10 +29,10 @@ def _get_infos(
     multitask: bool,
 ):
     rng, actor_key, critic_key = jax.random.split(rng, 3)
-    # critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
-    # actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
-    _, critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, compute_per_layer=True)
-    _, actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask, compute_per_layer=True)
+    critic_info = evaluate_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask)
+    actor_info = evaluate_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask)
+    # _, critic_info = update_critic(critic_key, actor, critic, target_critic, temp, batch, discount, num_bins, v_max, multitask, compute_per_layer=True)
+    # _, actor_info = update_actor(actor_key, actor, critic, temp, batch, num_bins, v_max, multitask, compute_per_layer=True)
     _, alpha_info = update_temperature(temp, actor_info['entropy'], target_entropy)
     return {
         **critic_info,
