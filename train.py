@@ -98,15 +98,10 @@ def main(_):
 
     obs = env.reset()
     start_iter = 0
-    if os.path.exists(f'{save_path}/pause.txt'):
-        try:
-            agent.load(save_path)
-            replay_buffer.load(save_path)
-            print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
-            obs = sample(start_iter, obs)
-        except:
-            for i in range(FLAGS.start_training):
-                obs = sample(i, obs)
+    if os.path.exists(f'{save_path}/actor.txt'):
+        agent.load(save_path)
+    if os.path.exists(f'{save_path}/buffer_info'):
+        replay_buffer.load(save_path)
     else:
         for i in range(FLAGS.start_training):
             obs = sample(i, obs)
