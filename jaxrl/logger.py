@@ -59,16 +59,19 @@ class EpisodeRecorder:
         batches_info = replay_buffer.sample_task_batches(task_batch)
         batches_info = reward_normalizer.normalize(batches_info, agent.get_temperature())
         critic, actor, alpha = agent.get_infos(batches_info, FLAGS.evaluate)
-        c, cp, cf, cg = critic
-        a, ap, af, ag = actor
-        cp = flatten_tree(remove_from_tree(cp))
-        cf = flatten_tree(remove_from_tree(cf))
-        cg = flatten_tree(remove_from_tree(cg))
-        ap = flatten_tree(remove_from_tree(ap))
-        af = flatten_tree(remove_from_tree(af))
-        ag = flatten_tree(remove_from_tree(ag))
         infos_online_eval = self._get_scores()
-        infos = {**critic, **actor, **alpha, **infos_online_eval, **cp, **cf,**cg,**ap,**af,**ag}
+        if FLAGS.evaluate:
+            c, cp, cf, cg = critic
+            a, ap, af, ag = actor
+            cp = flatten_tree(remove_from_tree(cp))
+            cf = flatten_tree(remove_from_tree(cf))
+            cg = flatten_tree(remove_from_tree(cg))
+            ap = flatten_tree(remove_from_tree(ap))
+            af = flatten_tree(remove_from_tree(af))
+            ag = flatten_tree(remove_from_tree(ag))
+            infos = {**c, **a, **alpha, **infos_online_eval, **cp, **cf,**cg,**ap,**af,**ag}
+        else:
+            infos = {**critic, **actor, **alpha, **infos_online_eval}
         if FLAGS.offline_evaluation:
             eval_stats = eval_env.evaluate(agent, num_episodes=FLAGS.eval_episodes, temperature=0.0, render=render)
             if render:
