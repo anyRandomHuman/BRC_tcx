@@ -8,7 +8,6 @@ import optax
 from copy import deepcopy
 
 
-@jax.jit
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 2):
         return {
@@ -31,7 +30,6 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     return return_dict
 
 
-@jax.jit
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.0001):
     #shape (critic, b, neuron) (b, neuron)
     sactivation = jnp.squeeze(activation)
@@ -66,7 +64,6 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
     return return_dict
 
 
-@jax.jit
 def _grad_conflict_tree_func(grads):
     sgrads = jnp.squeeze(grads, axis=0) if grads.shape[0] == 1 else grads
     if not hasattr(grads, 'shape') or not len(grads.shape) == 3:
@@ -97,11 +94,9 @@ def build_actor_input(critic: Model, observations: jnp.ndarray, task_ids: jnp.nd
     return inputs
 
 
-@functools.partial(jax.jit, static_argnames='multitask')
 def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                    num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
-    @jax.jit
     def actor_loss_fn(actor_params: Params, observation, actor_input, task_id):
         dist, intermediate = actor.apply({'params': actor_params}, actor_input, capture_intermediates=True,
                                          mutable=True)
@@ -147,12 +142,9 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
 
     return info
 
-@functools.partial(jax.jit, static_argnames='multitask')
 def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: Batch,
                  num_bins: int, v_max: float, multitask: bool, evaluate=False):
     inputs = build_actor_input(critic, batch.observations, batch.task_ids, multitask)
-
-    @jax.jit
     def actor_loss_fn(actor_params: Params, observations):
         #changes for computing efective rank and dead neurons
         dist = actor.apply({'params': actor_params}, inputs)
@@ -178,7 +170,7 @@ def update_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch: 
     return new_actor, info
 
 
-@functools.partial(jax.jit, static_argnames='multitask')
+
 def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                     temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     #note that batch size is always 32
@@ -209,7 +201,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1))  #shape (1, batch, num_bins) (1, 32,101)
     q_value_target = (bin_values * target_probs).sum(-1)  # 1, batch
 
-    @jax.jit
+
     def critic_loss_fn(critic_params: Params, observations, actions, task_ids, target_prob):
         q_logits, intermediate = critic.apply({'params': critic_params}, observations, actions, task_ids,
                                               capture_intermediates=True,
@@ -246,7 +238,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
     info |= feature_metrics
     return info
 
-@functools.partial(jax.jit, static_argnames='multitask')
+
 def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Model,
                   temp: Model, batch: Batch, discount: float, num_bins: int, v_max: float, multitask: bool):
     inputs = build_actor_input(critic, batch.next_observations, batch.task_ids, multitask)
@@ -270,7 +262,6 @@ def update_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mode
     upper_values = (next_q_probs * (target_bin_values - lower))[..., None]
     target_probs = jax.lax.stop_gradient(jnp.sum(lower_values * lower_mask + upper_values * upper_mask, axis=1))
     q_value_target = (bin_values * target_probs).sum(-1)
-    @jax.jit
     def critic_loss_fn(critic_params: Params):
         q_logits = critic.apply({"params": critic_params}, batch.observations, batch.actions, batch.task_ids)
         q_logprobs = jax.nn.log_softmax(q_logits, axis=-1)
@@ -298,7 +289,7 @@ def update_target_critic(critic: Model, target_critic: Model, tau: float):
         target_critic.params)
     return target_critic.replace(params=new_target_params)
 
-@jax.jit
+
 def update_temperature(temp: Model, entropy: float, target_entropy: float):
     def temperature_loss_fn(temp_params):
         temperature = temp.apply({'params': temp_params})
