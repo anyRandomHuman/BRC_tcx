@@ -118,8 +118,10 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
         'actor_pnorm': tree_norm(actor.params)
     }
     intermediate = loss_entropy_intermediate[1]
-    params_info = jax.tree.map(_weight_metric_tree_func, actor.params)
-    features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
+    # params_info = jax.tree.map(_weight_metric_tree_func, actor.params)
+    # features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
+    params_info = {}
+    features_info = {}
 
     network_name = 'actor'
     return info, {network_name: params_info}, {network_name: features_info}, {network_name: conflicts}
@@ -209,8 +211,11 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "critic_pnorm": tree_norm(critic.params),
     }
     conflicts = jax.tree.map(_grad_conflict_tree_func, grad)
-    params_info = jax.tree.map(_weight_metric_tree_func,critic.params)
-    features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
+    # params_info = jax.tree.map(_weight_metric_tree_func,critic.params)
+    # features_info = jax.tree.map(_activation_metric_tree_func, intermediate['intermediates'])
+    params_info = {}
+    features_info = {}
+
     network_name = 'critic'
     return info, {network_name: params_info}, {network_name: features_info}, {network_name: conflicts}
 
