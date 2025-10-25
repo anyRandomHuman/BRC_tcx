@@ -16,7 +16,7 @@ from jaxrl.env_names import get_environment_list
 
 
 FLAGS = flags.FLAGS
-
+#lol
 
 # flags.DEFINE_integer('seed', 0, 'Random seed.')
 # flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
