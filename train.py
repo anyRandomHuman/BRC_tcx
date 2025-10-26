@@ -19,7 +19,7 @@ flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
 flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
-flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
+flags.DEFINE_integer('max_steps', int(2000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(500000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
 flags.DEFINE_string('env_names', 'pendulum-spin', 'Environment name.')
@@ -29,7 +29,7 @@ flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
-flags.DEFINE_integer('time', 64800, 'Width of the critic network.')
+flags.DEFINE_integer('time', 172800, 'Width of the critic network.')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -116,7 +116,7 @@ def main(_):
             pause_iter = i
             os.remove(f'{submit_dir}/pause.flag')
             break
-        if FLAGS.assigned_time - run_time < 300:
+        if FLAGS.time - run_time < 300:
             with open(f'{save_path}/pause.txt', 'w') as f:
                 f.write(f'{i}')
             print('runtime insufficient, quitting')
