@@ -1,12 +1,12 @@
 import jax.tree
 import numpy as np
 import wandb
-from jaxrl.utils import flatten_tree, remove_from_tree, prune_single_child_nodes, _weight_metric_tree_func, _activation_metric_tree_func, _grad_conflict_tree_func
+from jaxrl.utils import flatten_tree, remove_from_tree, prune_single_child_nodes, _weight_metric_tree_func, _activation_metric_tree_func, _grad_conflict_tree_func, keep_from_dict
 
 
 def log_to_wandb(step: int, infos: dict, suffix: str = ''):
     dict_to_log = {'timestep': step}
-    to_remove_keys = ['bias, flat, LayerNorm']
+    to_remove_keys = ['bias', 'flat', 'LayerNorm']
 
     for info_key in infos:
         skip= False
@@ -66,9 +66,11 @@ class EpisodeRecorder:
             a, ap, af, ag = actor
             cp = flatten_tree(remove_from_tree(jax.tree.map(_weight_metric_tree_func, cp)))
             cf = flatten_tree(remove_from_tree(jax.tree.map(_activation_metric_tree_func,cf)))
+            cf = keep_from_dict(cf)
             cg = flatten_tree(remove_from_tree(jax.tree.map(_grad_conflict_tree_func, cg)))
             ap = flatten_tree(remove_from_tree(jax.tree.map(_weight_metric_tree_func, ap)))
             af = flatten_tree(remove_from_tree(jax.tree.map(_activation_metric_tree_func, af)))
+            af = keep_from_dict(af)
             ag = flatten_tree(remove_from_tree(jax.tree.map(_grad_conflict_tree_func, ag)))
             infos = {**c, **a, **alpha, **infos_online_eval, **cp, **cf,**cg,**ap,**af,**ag}
         else:

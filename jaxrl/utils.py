@@ -84,19 +84,19 @@ def remove_from_tree(tree, to_remove_keys=['LayerNorm', 'bias', 'flat']):
     return tree
 
 def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
-    if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 2):
+    if not (hasattr(weight_matrix, 'shape') and len(weight_matrix.shape) == 3):
         return {
-        'effective_rank': 0,
-        'parameter_norm': 0
+        'effective_rank': jnp.array(-1),
+        'parameter_norm': jnp.array(-1)
     }
-    sing_values = jnp.linalg.svd(weight_matrix, compute_uv=False)
-    cumsum = jnp.cumsum(sing_values)
-    nuclear_norm = jnp.sum(sing_values)
+    sing_values = jax.vmap(jnp.linalg.svd, in_axes=(0,None,None))(weight_matrix, True, False)
+    cumsum = jnp.cumsum(sing_values, axis=-1)
+    nuclear_norm = jnp.sum(sing_values, axis=1)
     approximate_rank_threshold = 1.0 - rank_delta
-    threshold_crossed = (cumsum >= approximate_rank_threshold * nuclear_norm)
-    effective_rank = sing_values.shape[0] - jnp.sum(threshold_crossed) + 1
+    threshold_crossed = jnp.where((cumsum >= approximate_rank_threshold * nuclear_norm), 1, 0)
+    effective_rank = sing_values.shape[1] - jnp.sum(threshold_crossed, axis=1) + 1
 
-    pnorm = jnp.sqrt(sum(weight_matrix ** 2).sum())
+    pnorm = jnp.sqrt(sum(weight_matrix ** 2).sum(axis=1))
 
     return_dict = {
         'effective_rank': effective_rank,
@@ -106,30 +106,24 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
 
 
 def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_threshold=0.0001):
-    #shape (critic, b, neuron) (b, neuron)
-    sactivation = jnp.squeeze(activation)
-    # print(f'sactivation shape: {sactivation.shape}')
-    if not hasattr(activation, 'shape') or (not len(sactivation.shape) == 2 and not len(sactivation.shape) == 3):
+    #shape  (num_network, b, neuron) in case of vmap network (num_network, critic, b, neuron)
+    if not hasattr(activation, 'shape') or not len(activation.shape) == 3:
         return {
-            'dead_percentage': -1.0,
-            'dormant_ratio': -1.0,
-            'feature_norm': -1.0
+            'dead_percentage': jnp.array(-1),
+            'dormant_ratio': jnp.array(-1),
+            'feature_norm': jnp.array(-1)
         }
+    sactivation = activation
+    activation_mean = sactivation.mean(axis=1)  #mean over batch dimension (num_network, neuron)
+    num_neurons = sactivation.shape[-1]
+    neuron_var = jnp.var(sactivation, axis=1)
+    dead_neurons = jnp.where(neuron_var < dead_threshold, 1, 0)
+    dead_percentage = (dead_neurons.sum(axis=1) / num_neurons) * 100
 
-    if len(sactivation.shape) == 3:
-        sactivation = sactivation.mean(axis=0)
+    dormant_score = activation_mean / jnp.expand_dims(activation_mean.mean(axis=1), 1) #(num_network, neuron)
+    dormant_ratio = jnp.sum(jnp.where(dormant_score < dormant_threshold, 1, 0), axis=1) / num_neurons
 
-    activation_mean = sactivation.mean(axis=0)  #mean over batch dimension
-    num_neurons = sactivation.shape[1]
-    neuron_var = jnp.var(sactivation, axis=0)
-    dead_neurons = jnp.where(neuron_var < dead_threshold, jnp.ones(sactivation.shape[1]),
-                             jnp.zeros(sactivation.shape[1]))
-    dead_percentage = (dead_neurons.sum() / num_neurons) * 100
-
-    dormant_score = activation_mean / activation_mean.mean()
-    dormant_ratio = jnp.sum(dormant_score < dormant_threshold) / num_neurons
-
-    fnorm = jnp.sqrt(sum(activation_mean ** 2).sum())
+    fnorm = jnp.sqrt(jnp.square(activation_mean).sum(axis=1))
 
     return_dict = {
         'dead_percentage': dead_percentage,
@@ -140,18 +134,25 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 
 
 def _grad_conflict_tree_func(grads):
-    sgrads = jnp.squeeze(grads, axis=0) if grads.shape[0] == 1 else grads
-    if not hasattr(grads, 'shape') or not len(sgrads.shape) == 3:
-        return {'conflict_rate': -1}
+    if not hasattr(grads, 'shape') or not len(grads.shape) == 4:
+        return {'conflict_rate': jnp.array(-1)}
     #grad shape (1, batch, num critic=2, in, out)
 
-    fgrads = jnp.reshape(sgrads, sgrads.shape[:-2] + (-1,))  #shape critic(1, b, 2, n*m) actor(b, n*m)
+    fgrads = jnp.reshape(grads, grads.shape[:-2] + (-1,))  #shape critic(1, b, 2, n*m) actor(b, n*m)
     fgrads1 = fgrads[0]  #2,n*m
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
     unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads)  #(1,b,2) (1,b)
     conflit_mask = jnp.where(unnormed_cosine_similaritiy < 0, 1, 0)
     conflict_count = conflit_mask.sum(axis=0).mean()
-    return {'conflict_rate': conflict_count / sgrads.shape[0]}
+    return {'conflict_rate': conflict_count / grads.shape[1]}
+
+def keep_from_dict(dict:dict, keep_keys=['Dense']):
+    new_dict = {}
+    for key, value in dict.items():
+        for keep_key in keep_keys:
+            if keep_key in key:
+                new_dict[key] = value
+    return new_dict
 
 
 @flax.struct.dataclass
