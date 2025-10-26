@@ -136,15 +136,15 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
 def _grad_conflict_tree_func(grads):
     if not hasattr(grads, 'shape') or not len(grads.shape) == 4:
         return {'conflict_rate': jnp.array(-1)}
-    #grad shape (1, batch, num critic=2, in, out)
+    #grad shape (1, batch, in, out)
 
-    fgrads = jnp.reshape(grads, grads.shape[:-2] + (-1,))  #shape critic(1, b, 2, n*m) actor(b, n*m)
-    fgrads1 = fgrads[0]  #2,n*m
+    fgrads = jnp.reshape(grads, grads.shape[:-2] + (-1,))  #shape(1, b, n*m)
+    fgrads1 = fgrads[:, 0]  #(1, b, n*m)
     # norm_prods = (jnp.linalg.norm(grads1, axis=(-1,-2)) *jnp.linalg.norm(fgrads, axis=(-1,-2)) + 1e-8) #b,2
-    unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads)  #(1,b,2) (1,b)
+    unnormed_cosine_similaritiy = jnp.einsum('...i,...i->...', fgrads1, fgrads)  #(1,b)
     conflit_mask = jnp.where(unnormed_cosine_similaritiy < 0, 1, 0)
-    conflict_count = conflit_mask.sum(axis=0).mean()
-    return {'conflict_rate': conflict_count / grads.shape[1]}
+    conflict_count = conflit_mask.sum(axis=1) / grads.shape[1]
+    return {'conflict_rate': conflict_count}
 
 def keep_from_dict(dict:dict, keep_keys=['Dense']):
     new_dict = {}
