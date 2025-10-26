@@ -96,7 +96,7 @@ def _weight_metric_tree_func(weight_matrix, rank_delta=0.01):
     threshold_crossed = jnp.where((cumsum >= approximate_rank_threshold * nuclear_norm), 1, 0)
     effective_rank = sing_values.shape[1] - jnp.sum(threshold_crossed, axis=1) + 1
 
-    pnorm = jnp.sqrt(sum(weight_matrix ** 2).sum(axis=1))
+    pnorm = jnp.sqrt((weight_matrix ** 2).sum(axis=(1,2)))
 
     return_dict = {
         'effective_rank': effective_rank,
