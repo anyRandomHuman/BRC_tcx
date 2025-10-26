@@ -116,7 +116,7 @@ def main(_):
             pause_iter = i
             os.remove(f'{submit_dir}/pause.flag')
             break
-        if FLAGS.assigned_time - run_time < 300:
+        if FLAGS.time - run_time < 300:
             with open(f'{save_path}/pause.txt', 'w') as f:
                 f.write(f'{i}')
             print('runtime insufficient, quitting')
