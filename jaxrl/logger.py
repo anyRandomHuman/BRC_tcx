@@ -1,6 +1,7 @@
+import jax.tree
 import numpy as np
 import wandb
-from jaxrl.utils import flatten_tree, remove_from_tree, prune_single_child_nodes
+from jaxrl.utils import flatten_tree, remove_from_tree, prune_single_child_nodes, _weight_metric_tree_func, _activation_metric_tree_func, _grad_conflict_tree_func
 
 
 def log_to_wandb(step: int, infos: dict, suffix: str = ''):
@@ -63,12 +64,12 @@ class EpisodeRecorder:
         if FLAGS.evaluate:
             c, cp, cf, cg = critic
             a, ap, af, ag = actor
-            cp = flatten_tree(remove_from_tree(cp))
-            cf = flatten_tree(remove_from_tree(cf))
-            cg = flatten_tree(remove_from_tree(cg))
-            ap = flatten_tree(remove_from_tree(ap))
-            af = flatten_tree(remove_from_tree(af))
-            ag = flatten_tree(remove_from_tree(ag))
+            cp = flatten_tree(remove_from_tree(jax.tree.map(_weight_metric_tree_func, cp)))
+            cf = flatten_tree(remove_from_tree(jax.tree.map(_activation_metric_tree_func,cf)))
+            cg = flatten_tree(remove_from_tree(jax.tree.map(_grad_conflict_tree_func, cg)))
+            ap = flatten_tree(remove_from_tree(jax.tree.map(_weight_metric_tree_func, ap)))
+            af = flatten_tree(remove_from_tree(jax.tree.map(_activation_metric_tree_func, af)))
+            ag = flatten_tree(remove_from_tree(jax.tree.map(_grad_conflict_tree_func, ag)))
             infos = {**c, **a, **alpha, **infos_online_eval, **cp, **cf,**cg,**ap,**af,**ag}
         else:
             infos = {**critic, **actor, **alpha, **infos_online_eval}
