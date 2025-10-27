@@ -14,7 +14,6 @@ from jaxrl.env_names import get_environment_list
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('test', 'False', 'Whether to run in test mode.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
@@ -29,7 +28,7 @@ flags.DEFINE_boolean('offline_evaluation', True, 'Whether to perform evaluations
 flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
-flags.DEFINE_integer('time', 172800, 'Width of the critic network.')
+flags.DEFINE_integer('time', 144000, 'Width of the critic network.')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -92,7 +91,7 @@ def main(_):
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}_/{FLAGS.seed}'
+    save_path = f'{save_dir}/{FLAGS.env_names}_{FLAGS.seed}'
     os.makedirs(save_path, exist_ok=True)
     
 
@@ -112,9 +111,9 @@ def main(_):
 
     for i in range(FLAGS.max_steps - FLAGS.start_training - start_iter):
         run_time = time.time() - start_time
-        if os.path.exists(f'{submit_dir}/pause.flag'):
+        if os.path.exists(f'{submit_dir}/{FLAGS.env_names}_pause.flag'):
             pause_iter = i
-            os.remove(f'{submit_dir}/pause.flag')
+            os.remove(f'{submit_dir}/{FLAGS.env_names}_pause.flag')
             break
         if FLAGS.time - run_time < 300:
             with open(f'{save_path}/pause.txt', 'w') as f:
@@ -129,10 +128,6 @@ def main(_):
         if i % eval_interval == 0 and i >= FLAGS.start_training and FLAGS.evaluate:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
                                                 render=FLAGS.render)
-            # agent.save(save_path)
-            # replay_buffer.save(save_path)
-            # f.write(f'{i}')
-            # f.write(str(info_dict))
     agent.save(save_path)
 
             

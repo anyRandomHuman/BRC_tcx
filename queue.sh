@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=18:00:00  # Uncomment this line
+#SBATCH --time=40:00:00  # Uncomment this line
 #SBATCH --partition=gpu_a100_il
 #SBATCH --gres=gpu:1
 #SBATCH --mail-user=urskl@student.kit.edu
