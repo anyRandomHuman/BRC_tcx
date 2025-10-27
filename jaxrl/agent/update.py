@@ -36,10 +36,10 @@ def evaluate_actor(key: PRNGKey, actor: Model, critic: Model, temp: Model, batch
     loss_entropy = jnp.array(loss_entropy)
 
     info = {
-        'grad_norm': grad_norm,
+        'actor_gradient_norm': grad_norm,
         'entropy': loss_entropy[:,0].mean(),
         'actor_loss': loss_entropy[:,1].mean(),
-        'actor_pnorm': tree_norm(actor.params)
+        'actor_parameter_norm': tree_norm(actor.params)
     }
     intermediate = loss_entropy_intermediate[1]
     # params_info = jax.tree.map(_weight_metric_tree_func, actor.params)
@@ -133,6 +133,7 @@ def evaluate_critic(key: PRNGKey, actor: Model, critic: Model, target_critic: Mo
         "q_max": q_value_target.max(),
         "r": batch.rewards.mean(),
         "critic_pnorm": tree_norm(critic.params),
+        "critic_gradient_norm": tree_norm(grad),
     }
     # conflicts = jax.tree.map(_grad_conflict_tree_func, grad)
     # params_info = jax.tree.map(_weight_metric_tree_func,critic.params)

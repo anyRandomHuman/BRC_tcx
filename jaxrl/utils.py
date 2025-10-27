@@ -114,7 +114,7 @@ def _activation_metric_tree_func(activation, dormant_threshold=0.025, dead_thres
             'feature_norm': jnp.array(-1)
         }
     sactivation = activation
-    activation_mean = sactivation.mean(axis=1)  #mean over batch dimension (num_network, neuron)
+    activation_mean = jnp.abs(sactivation).mean(axis=1)  #mean over batch dimension (num_network, neuron)
     num_neurons = sactivation.shape[-1]
     neuron_var = jnp.var(sactivation, axis=1)
     dead_neurons = jnp.where(neuron_var < dead_threshold, 1, 0)
