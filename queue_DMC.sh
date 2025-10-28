@@ -9,7 +9,7 @@
 module load  devel/cuda/12.8
 # Activate your conda environment
 eval "$(conda shell.bash hook)"
-conda activate DMC
+conda activate dime
 export MUJOCO_GL=egl
 
 cleanup_and_save()
