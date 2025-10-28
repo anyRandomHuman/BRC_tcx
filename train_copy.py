@@ -115,7 +115,7 @@ def main(_):
     #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}_test'
+    save_path = f'{save_dir}/{FLAGS.env_names}_test_{FLAGS.seed}'
     os.makedirs(save_path, exist_ok=True)
 
     obs = env.reset()
