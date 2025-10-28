@@ -2,7 +2,10 @@ import numpy as np
 import gymnasium as gym
 import random
 from gymnasium.wrappers import FlattenObservation, RescaleAction, TimeLimit
-    
+from numpy.f2py.auxfuncs import throw_error
+from numpy.f2py.f90mod_rules import options
+
+
 class FlattenObservationShadowhandWrapper(gym.ObservationWrapper):
     def __init__(self, env: gym.Env):
         super().__init__(env)
@@ -16,7 +19,9 @@ class FlattenObservationShadowhandWrapper(gym.ObservationWrapper):
     def observation(self, obs: dict) -> np.ndarray:
         return np.concatenate((obs['observation'], obs['desired_goal']), axis=-1)
 
-def _make_env_dmc(env_name: str, seed: int = 0) -> gym.Env:
+def _make_env_dmc(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
+    if num_env != 1:
+        raise NotImplementedError('vectorized env for DMC not implemented')
     from dmc_envs.tasks import cheetah, walker, hopper, reacher, ball_in_cup, pendulum, fish
     from dm_control import suite
     suite.ALL_TASKS = suite.ALL_TASKS + suite._get_tasks('custom')
@@ -34,7 +39,9 @@ def _make_env_dmc(env_name: str, seed: int = 0) -> gym.Env:
     env = RescaleAction(env, -1.0, 1.0)
     return env
 
-def _make_env_metaworld(env_name: str, seed: int = 0) -> gym.Env:
+def _make_env_metaworld(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
+    if num_env != 1:
+        raise NotImplementedError('vectorized env for metaworld not implemented')
     try:
         constructor = ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[env_name]
     except:
@@ -44,13 +51,18 @@ def _make_env_metaworld(env_name: str, seed: int = 0) -> gym.Env:
     env = TimeLimit(env, 200)
     return env
     
-def _make_env_humanoidbench(env_name: str, seed: int = 0) -> gym.Env:
+def _make_env_humanoidbench(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
     import humanoid_bench
     from humanoid_bench.env import ROBOTS, TASKS
-    env = gym.make(env_name, autoreset=False)
+    if num_env > 1:
+        env = gym.make_vec(env_name, num_envs=num_env,vectorization_mode="async")
+    else:
+        env = gym.make(env_name, autoreset=False)
     return env
 
-def _make_env_shadowhand(env_name: str, seed: int = 0) -> gym.Env:
+def _make_env_shadowhand(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
+    if num_env != 1:
+        raise NotImplementedError('vectorized env for shadowhand not implemented')
     import dex_envs
     env_version = 'v1'
     reward_type = 'sparse'
@@ -59,16 +71,16 @@ def _make_env_shadowhand(env_name: str, seed: int = 0) -> gym.Env:
     env = FlattenObservationShadowhandWrapper(env)
     return env
 
-def make_env(env_name: str, seed: int = 0) -> gym.Env:
+def make_env(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
     env = None
     if '-goal-observable' in env_name:
-        env = _make_env_metaworld(env_name, seed)
+        env = _make_env_metaworld(env_name, seed, num_env)
     elif '-v0' in env_name:
-        env = _make_env_humanoidbench(env_name, seed)
+        env = _make_env_humanoidbench(env_name, seed, num_env)
     elif '-' in env_name:
-        env = _make_env_dmc(env_name, seed)
+        env = _make_env_dmc(env_name, seed, num_env)
     else:
-        env = _make_env_shadowhand(env_name, seed)
+        env = _make_env_shadowhand(env_name, seed, num_env)
     return env
 
 class ParallelEnv():
@@ -199,3 +211,152 @@ class ParallelEnv():
             renders.append(render)
         renders = np.stack(renders)
         return renders
+
+
+class ParallelVecEnv(ParallelEnv):
+    def __init__(self, env_names: list, seed: int = 0, num_envs=2):
+        np.random.seed(seed)
+        random.seed(seed)
+
+        envs = []
+        obs_dims = np.zeros(len(env_names), dtype=np.int32)
+        act_dims = np.zeros(len(env_names), dtype=np.int32)
+        for i, env_name in enumerate(env_names):
+            envs.append(make_env(env_name, seed, num_envs))
+            obs_dims[i] = envs[-1].observation_space.shape[1]
+            act_dims[i] = envs[-1].action_space.shape[1]
+
+        max_state_dim = int(np.max(obs_dims))
+        max_action_dim = int(np.max(act_dims))
+        state_dim_differences = max_state_dim - obs_dims
+
+        observation_space = gym.spaces.Box(
+            low=(np.ones(max_state_dim, dtype=np.float64)[None, :] - np.inf).repeat(len(envs)*num_envs, axis=0),
+            high=(np.ones(max_state_dim, dtype=np.float64)[None, :] + np.inf).repeat(len(envs)* num_envs, axis=0),
+            shape=(len(envs)*num_envs, max_state_dim),
+            dtype=envs[-1].observation_space.dtype)
+
+        action_space = gym.spaces.Box(
+            low=(np.ones(max_action_dim, dtype=np.float64)[None, :] * -1).repeat(len(envs)*num_envs, axis=0),
+            high=(np.ones(max_action_dim, dtype=np.float64)[None, :]).repeat(len(envs)*num_envs, axis=0),
+            shape=(len(envs)*num_envs, max_action_dim),
+            dtype=envs[-1].action_space.dtype)
+
+        self.envs = envs
+        self.obs_dims = obs_dims
+        self.act_dims = act_dims
+        self.state_dim_differences = state_dim_differences
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.num_tasks = len(envs)
+        self.num_envs = num_envs
+
+    def step(self, actions: np.ndarray):
+        #actions shape (num_tasks * num_envs, action_dims)
+        states, rewards, terminals, truncates, goals = [], [], [], [], []
+        actions = self.reshape_in(actions)
+        for i, (env, action) in enumerate(zip(self.envs, actions)):
+            state, reward, terminal, truncate, info = env.step(action[:self.act_dims[i]])
+            state = np.concatenate((state, np.zeros(self.state_dim_differences[i], dtype=np.float64)), axis=0)
+            states.append(state)
+            rewards.append(reward)
+            terminals.append(terminal)
+            truncates.append(truncate)
+            goals.append(self._get_goals(info))
+        return (self.reshape_out(np.stack(states)), self.reshape_out(np.stack(rewards)),
+                self.reshape_out(np.stack(terminals)), self.reshape_out(np.stack(truncates)),
+                self.reshape_out(np.stack(goals)))
+
+    def _reset_idx(self, idx: int):
+        seed = np.random.randint(0, 1e8)
+        mask = np.zeros((self.num_envs))
+        mask[idx% self.num_envs] = 1
+        state, _ = self.envs[idx/self.num_tasks].reset(seed=seed, options={'reset_mask': mask})
+        state = np.concatenate((state, np.zeros(self.state_dim_differences[idx], dtype=np.float32)), axis=0)
+        return state
+
+    def _reset_mask(self, task:int, mask:np.ndarray):
+        state, _ = self.envs[task].reset(options={'reset_mask': mask})
+        state = np.concatenate((state, np.zeros(self.state_dim_differences[task], dtype=np.float32)), axis=0)
+        return state
+
+    def reset_where_done(self, states: np.ndarray, terminals: np.ndarray, truncates: np.ndarray):
+        states = self.reshape_in(states)
+        terminals = self.reshape_in(terminals)
+        truncates = self.reshape_in(truncates)
+        for j, (terminal, truncate) in enumerate(zip(terminals, truncates)):
+            dones = np.logical_or(terminal, truncate)
+            if np.any(dones):
+                states[j], terminals[j], truncates[j] = self._reset_mask(j, dones), np.zeros(self.num_envs), np.zeros(self.num_envs)
+        return self.reshape_out(states), self.reshape_out(terminals), self.reshape_out(truncates)
+
+    def reset(self):
+        states = []
+        for i, env in enumerate(self.envs):
+            states.append(self._reset_mask(i, np.ones(self.num_envs)))
+        return self.reshape_out(np.stack(states))
+
+    def _get_goals(self, infos: dict):
+        goals = []
+        for info in infos:
+            if 'success' in info:
+                goal = info['success']
+            elif 'is_success' in info:
+                goal = info['is_success']
+            elif 'solved' in info:
+                goal = info['solved']
+            else:
+                goal = 0
+            goals.append(goal)
+        return goals
+
+    def evaluate(self, agent, num_episodes, temperature=0.0, render=False, max_render_steps=5000, render_frameskip=4):
+        n_rollouts = np.zeros(self.num_tasks* self.num_envs)
+        returns = np.zeros(self.num_tasks* self.num_envs)
+        goals = np.zeros(self.num_tasks* self.num_envs)
+        mask = np.ones(self.num_tasks* self.num_envs)
+        mask_goals = np.ones(self.num_tasks* self.num_envs)
+        observations = self.reset()
+        if render:
+            renders = []
+        i = 0
+        while True:
+            if render and i % render_frameskip == 0 and i < max_render_steps:
+                env_renders = self.render()
+                renders.append(env_renders)
+            actions = agent.sample_actions(observations, temperature=temperature)
+            #actions = envs.action_space.sample()
+            next_observations, rewards, terms, truns, success = self.step(actions)
+            returns += rewards * mask
+            goals += success * mask_goals
+            mask_goals = np.where(success, 0, mask_goals)
+            mask_goals = np.where(np.logical_or(terms, truns), 1, mask_goals)
+            observations = next_observations
+            n_rollouts += np.logical_or(terms, truns)
+            observations, terms, truns = self.reset_where_done(observations, terms, truns)
+            mask = np.where(n_rollouts >= num_episodes, 0, 1)
+            i += 1
+            if n_rollouts.min() == num_episodes:
+                break
+        if render:
+            renders = self.reshape_out(np.stack(renders))
+            renders = np.transpose(renders, (1, 0, 4, 2, 3))
+            return {'goal': goals/num_episodes, 'return': returns/num_episodes, 'renders': renders}
+        else:
+            return {'goal': goals/num_episodes, 'return': returns/num_episodes}
+
+    def render(self):
+        renders = []
+        for i, env in enumerate(self.envs):
+            render = env.render()
+            renders.append(render)
+        renders = self.reshape_out(np.stack(renders))
+        return renders
+
+    def reshape_out(self, arr):
+            return  np.reshape(arr, (self.num_envs * self.num_tasks, -1))
+
+    def reshape_in(self, arr):
+        return np.reshape(arr, (self.num_envs, self.num_tasks, -1))
+
+
