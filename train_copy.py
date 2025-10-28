@@ -26,7 +26,7 @@ if not os.environ.get('SLURM_SUBMIT_DIR'):
     flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
     flags.DEFINE_integer('replay_buffer_size', 10, 'Replay buffer size.')
     flags.DEFINE_integer('start_training', 15,'Number of training steps to start training.')
-    flags.DEFINE_string('env_names', 'cartpole-swingup', 'Environment name.')
+    flags.DEFINE_string('env_names', 'h1-walk=v0', 'Environment name.')
     flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
     flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
     flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
@@ -35,6 +35,7 @@ if not os.environ.get('SLURM_SUBMIT_DIR'):
     flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
     flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
+    flags.DEFINE_integer('num_env', 1, 'number of repeated envs per task')
 else:
     flags.DEFINE_integer('seed', 0, 'Random seed.')
     flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
@@ -51,6 +52,7 @@ else:
     flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
     flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
+    flags.DEFINE_integer('num_env', 1, 'number of repeated envs per task')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -67,11 +69,15 @@ def main(_):
         )
 
     env_names = get_environment_list(FLAGS.env_names)
+    env_names = env_names * FLAGS.num_env
     env = ParallelEnv(env_names, seed=FLAGS.seed)
     if FLAGS.offline_evaluation:
         eval_env = ParallelEnv(env_names, seed=FLAGS.seed + 42)
     else:
         eval_env = None
+
+    for e in env.envs:
+        print(e)
 
     eval_interval = FLAGS.eval_interval
         
