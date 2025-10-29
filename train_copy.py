@@ -6,7 +6,7 @@ from absl import app, flags
 
 from jaxrl.agent.brc_learner import BRC
 from jaxrl.replay_buffer import ParallelReplayBuffer
-from jaxrl.envs import ParallelEnv
+from jaxrl.envs import ParallelEnv, ParallelVecEnv
 from jaxrl.normalizer import RewardNormalizer
 from jaxrl.logger import EpisodeRecorder
 from jaxrl.env_names import get_environment_list
@@ -35,15 +35,15 @@ if not os.environ.get('SLURM_SUBMIT_DIR'):
     flags.DEFINE_string('save_location', './checkpoints', 'path to save checkpoints, need to be absolute if on cluster')
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
     flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
-    flags.DEFINE_integer('num_env', 1, 'number of repeated envs per task')
+    flags.DEFINE_integer('num_envs', 1, 'number of repeated envs per task')
 else:
     flags.DEFINE_integer('seed', 0, 'Random seed.')
     flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
-    flags.DEFINE_integer('eval_interval', 1027, 'Eval interval.')
-    flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
+    flags.DEFINE_integer('eval_interval', 200, 'Eval interval.')
+    flags.DEFINE_integer('batch_size', 100, 'Mini batch size.')
     flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
     flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
-    flags.DEFINE_integer('start_training', int(1026),'Number of training steps to start training.')
+    flags.DEFINE_integer('start_training', int(100),'Number of training steps to start training.')
     flags.DEFINE_string('env_names', 'h1hand-walk-v0', 'Environment name.')
     flags.DEFINE_boolean('evaluate', True, 'Whether to evaluate')
     flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
@@ -52,7 +52,7 @@ else:
     flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
     flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
-    flags.DEFINE_integer('num_env', 1, 'number of repeated envs per task')
+    flags.DEFINE_integer('num_envs', 2, 'number of repeated envs per task')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -69,8 +69,10 @@ def main(_):
         )
 
     env_names = get_environment_list(FLAGS.env_names)
-    env_names = env_names * FLAGS.num_env
-    env = ParallelEnv(env_names, seed=FLAGS.seed)
+    if FLAGS.num_envs == 1:
+        env = ParallelEnv(env_names, seed=FLAGS.seed)
+    else:
+        env = ParallelVecEnv(env_names, seed=FLAGS.seed, num_envs=FLAGS.num_envs)
     if FLAGS.offline_evaluation:
         eval_env = ParallelEnv(env_names, seed=FLAGS.seed + 42)
     else:
