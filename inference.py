@@ -19,16 +19,17 @@ flags.DEFINE_string('robot', 'cartpole', 'Name of the robot to use.')
 
 
 def main(_):
-    submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-
+    if os.environ.get('SLURM_SUBMIT_DIR') is not None:
+        submit_dir = os.environ.get('SLURM_SUBMIT_DIR')
+        save_dir = r'/pfs/work9/workspace/scratch/ka_et4232-tcx/checkpoints'
+    else:
+        save_dir = './checkpoints'
+        submit_dir = '.'
     out_path = submit_dir + '/summary.csv'
     if not os.path.exists(out_path):
         summary = DataFrame(columns=['task', 'num_seeds', 'goal', 'return'])
     else:
-        summary = read_csv(out_path)
-    # save_dir = r'/pfs/work9/workspace/scratch/ka_et4232-tcx/checkpoints'
-    save_dir = './checkpoints'
-
+        summary = read_csv(out_path, index_col=0)
     for i, task in enumerate(os.listdir(save_dir)):
         if not FLAGS.robot == task.split('-')[0]:
             continue
@@ -82,7 +83,7 @@ def main(_):
                     np.save(f, frames)
 
             summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[i,1]
-    summary.to_csv(out_path)
+    summary.to_csv(out_path, index=False)
 if __name__ == "__main__":
     app.run(main)
 
