@@ -41,7 +41,7 @@ def main(_):
             continue
 
         existing_record = summary[summary['task'] == task]
-        if len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
+        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
             continue
 
         checkpoint_name = task
@@ -70,7 +70,7 @@ def main(_):
 
         for seeds in os.listdir(task_path):
             if not os.path.exists(f'{task_path}/{seeds}/actor.txt'):
-                summary.iloc[idx, 1] -= 1
+                summary.iloc[-1, 1] -= 1
                 continue
             agent.load_inference(f'{task_path}/{seeds}')
 
@@ -78,8 +78,8 @@ def main(_):
             eval_stats = env.evaluate(agent, num_episodes=1, temperature=0.0, render=True, max_render_steps=episode_len)
 
             renders = eval_stats['renders']
-            summary.loc[idx, 'goal'] += eval_stats['goal']
-            summary.loc[idx, 'return'] += eval_stats['return']
+            summary.loc[-1, 'goal'] += eval_stats['goal']
+            summary.loc[-1, 'return'] += eval_stats['return']
             videos_dir = f'{submit_dir}/videos/{env_name}/{seeds}'
             os.makedirs(videos_dir, exist_ok=True)
             for j in range(renders.shape[0]):
@@ -89,7 +89,7 @@ def main(_):
                 video_path = os.path.join(videos_dir, f'task_{j}.npy')
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
-        summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[idx,1]
+        summary.iloc[-1, 2:4] = summary.iloc[-1, 2:4] / summary.iloc[-1,1]
     summary.to_csv(out_path, index=False)
 
 
