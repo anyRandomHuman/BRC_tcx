@@ -128,18 +128,6 @@ def main(_):
 
     obs = env.reset()
     start_iter = 0
-    # if os.path.exists(f'{save_path}/pause.txt'):
-    #     try:
-    #         agent.load(save_path)
-    #         replay_buffer.load(save_path)
-    #         print(f'Loaded from {save_path}, resuming from iteration {start_iter}')
-    #         obs = sample(start_iter, obs)
-    #     except:
-    #         for i in range(FLAGS.start_training):
-    #             obs = sample(i, obs)
-    # else:
-    #     for i in range(FLAGS.start_training):
-    #         obs = sample(i, obs)
     for i in range(FLAGS.start_training):
         obs = sample(i, obs)
     import  time
@@ -159,24 +147,15 @@ def main(_):
             replay_buffer.save(save_path)
             break
         obs = sample(i + FLAGS.start_training, obs)
-        batches = replay_buffer.sample(FLAGS.batch_size,
-                                       FLAGS.updates_per_step)  # sample randomly from all data,not one per task
+        print(obs.shape)
+        batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
         batches = reward_normalizer.normalize(batches, agent.get_temperature())
         _ = agent.update(batches, FLAGS.updates_per_step, i)
         if i % eval_interval == 0 and i >= FLAGS.start_training:
-            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
-                                                render=FLAGS.render)
-            # print(f'info_dict: {info_dict}')
-            # agent.save(save_path)
-            # replay_buffer.save(save_path)
+            info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
 
-            # f.write(str(info_dict))
     agent.save(save_path)
-    # replay_buffer.save(save_path)
 
-    # if pause_iter >= 0:
-    #     with open(f'{save_path}/pause.txt', 'w') as f:
-    #         f.write(f'{pause_iter}')
 
 
 if __name__ == '__main__':
