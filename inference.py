@@ -14,8 +14,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 episode_len = 900
 flag = flags.FLAGS
-flags.DEFINE_string('ckp', 'HB_NOHANDS', 'Name of the environment to use.')
-flags.DEFINE_string('robot', 'cartpole', 'Name of the robot to use.')
+flags.DEFINE_string('robot', 'cheetah', 'Name of the robot to use.')
 
 
 def main(_):
@@ -29,7 +28,8 @@ def main(_):
     if not os.path.exists(out_path):
         summary = DataFrame(columns=['task', 'num_seeds', 'goal', 'return'])
     else:
-        summary = read_csv(out_path, index_col=0)
+        summary = read_csv(out_path)
+
     for i, task in enumerate(os.listdir(save_dir)):
         if not FLAGS.robot == task.split('-')[0]:
             continue
@@ -52,11 +52,13 @@ def main(_):
             num_tasks=num_tasks,
             **kwargs,
         )
+        summary = summary[summary['task'] != task]
         idx =len(summary)
         summary.loc[idx] = [task, len(os.listdir(task_path)), 0., 0.]
 
         for seeds in os.listdir(task_path):
             if not os.path.exists(f'{task_path}/{seeds}/actor.txt'):
+                summary.iloc[idx, 1] -= 1
                 continue
             agent.load_inference(f'{task_path}/{seeds}')
 
@@ -81,9 +83,10 @@ def main(_):
                 # iio.imwrite(video_path, frames, fps=60)
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
-
-            summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[i,1]
+        summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[i,1]
     summary.to_csv(out_path, index=False)
+
+
 if __name__ == "__main__":
     app.run(main)
 
