@@ -15,7 +15,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 episode_len = 900
 flag = flags.FLAGS
 flags.DEFINE_string('robot', 'cheetah', 'Name of the robot to use.')
-
+flags.DEFINE_string('task', '', 'Name of whole task')
 
 def main(_):
     if os.environ.get('SLURM_SUBMIT_DIR') is not None:
@@ -32,9 +32,18 @@ def main(_):
     else:
         summary = read_csv(out_path)
 
-    for i, task in enumerate(os.listdir(save_dir)):
+    if FLAGS.task != '':
+        tasks =  enumerate(str.split(FLAGS.task, ' '))
+    else:
+        tasks = enumerate(os.listdir(save_dir))
+    for i, task in tasks:
         if not FLAGS.robot == task.split('-')[0]:
             continue
+
+        existing_record = summary[summary['task'] == task]
+        if len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
+            continue
+
         checkpoint_name = task
         task_path = f'{save_dir}/{task}'
         env_name = str(checkpoint_name)
@@ -54,10 +63,6 @@ def main(_):
             num_tasks=num_tasks,
             **kwargs,
         )
-
-        existing_record = summary[summary['task'] == task]
-        if len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
-            continue
 
         summary = summary[summary['task'] != task]
         idx =len(summary)
@@ -81,13 +86,7 @@ def main(_):
                 frames = renders[j]  # shape: (num_frames, channels, height, width)
                 frames = frames.transpose(0, 2, 3, 1)  # Rearrange to (num_frames, height, width, channels)
                 frames = (frames * 255).astype('uint8') if frames.dtype != 'uint8' else frames
-                # frames = [cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) for frame in frames]  # Convert RGB to BGR
-
-                # height, width = frames[0].shape[:2]
                 video_path = os.path.join(videos_dir, f'task_{j}.npy')
-                # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                # video = cv2.VideoWriter(video_path, fourcc, 30, (width, height))
-                # iio.imwrite(video_path, frames, fps=60)
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
         summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[idx,1]
