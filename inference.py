@@ -30,7 +30,7 @@ def main(_):
     save_dir = './checkpoints'
 
     for i, task in enumerate(os.listdir(save_dir)):
-        if not FLAGS.robot in task:
+        if not FLAGS.robot == task.split('-')[0]:
             continue
         checkpoint_name = task
         task_path = f'{save_dir}/{task}'
@@ -55,7 +55,8 @@ def main(_):
         summary.loc[idx] = [task, len(os.listdir(task_path)), 0., 0.]
 
         for seeds in os.listdir(task_path):
-
+            if not os.path.exists(f'{task_path}/{seeds}/actor.txt'):
+                continue
             agent.load_inference(f'{task_path}/{seeds}')
 
             env.reset()
