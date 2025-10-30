@@ -30,7 +30,7 @@ def main(_):
     save_dir = './checkpoints'
 
     for i, task in enumerate(os.listdir(save_dir)):
-        if not FLAGS.robot in task:
+        if not FLAGS.robot == task.split('-')[0]:
             continue
         checkpoint_name = task
         task_path = f'{save_dir}/{task}'
