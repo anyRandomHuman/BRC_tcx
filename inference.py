@@ -52,6 +52,11 @@ def main(_):
             num_tasks=num_tasks,
             **kwargs,
         )
+
+        existing_record = summary[summary['task'] == task]
+        if len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
+            continue
+
         summary = summary[summary['task'] != task]
         idx =len(summary)
         summary.loc[idx] = [task, len(os.listdir(task_path)), 0., 0.]
@@ -83,7 +88,7 @@ def main(_):
                 # iio.imwrite(video_path, frames, fps=60)
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
-        summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[i,1]
+        summary.iloc[idx, 2:4] = summary.iloc[idx, 2:4] / summary.iloc[idx,1]
     summary.to_csv(out_path, index=False)
 
 

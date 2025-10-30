@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-env = 'cartpole-swingup/2'
+env = 'cheetah-run/1'
 index = 0
 
 
