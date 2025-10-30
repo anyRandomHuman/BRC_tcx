@@ -20,10 +20,12 @@ flags.DEFINE_string('robot', 'cheetah', 'Name of the robot to use.')
 def main(_):
     if os.environ.get('SLURM_SUBMIT_DIR') is not None:
         submit_dir = os.environ.get('SLURM_SUBMIT_DIR')
-        save_dir = r'/pfs/work9/workspace/scratch/ka_et4232-tcx/checkpoints'
     else:
-        save_dir = './checkpoints'
         submit_dir = '.'
+    save_dir = r'/pfs/work9/workspace/scratch/ka_et4232-tcx/checkpoints'
+    if not os.path.exists(save_dir):
+        save_dir = './checkpoints'
+
     out_path = submit_dir + '/summary.csv'
     if not os.path.exists(out_path):
         summary = DataFrame(columns=['task', 'num_seeds', 'goal', 'return'])
