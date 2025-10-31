@@ -1,6 +1,8 @@
 import numpy as np
 import gymnasium as gym
 import random
+
+from envpool.mujoco.dmc.registration import task_name
 from gymnasium.wrappers import FlattenObservation, RescaleAction, TimeLimit
 from numpy.f2py.auxfuncs import throw_error
 from numpy.f2py.f90mod_rules import options
@@ -21,6 +23,13 @@ class FlattenObservationShadowhandWrapper(gym.ObservationWrapper):
 
 def _make_env_dmc(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
     if num_env != 1:
+        # import  envpool
+        # robot, task = env_name.split('-')
+        # robot = robot.capitalize()
+        # task = task.capitalize()
+        # n = robot + task + '-v1'
+        # env = envpool.make_dm(n, num_envs=num_env, seed=seed)
+        # env.action_space
         raise NotImplementedError('vectorized env for DMC not implemented')
     from dmc_envs.tasks import cheetah, walker, hopper, reacher, ball_in_cup, pendulum, fish
     from dm_control import suite
@@ -55,7 +64,7 @@ def _make_env_humanoidbench(env_name: str, seed: int = 0, num_env=1) -> gym.Env:
     import humanoid_bench
     from humanoid_bench.env import ROBOTS, TASKS
     if num_env > 1:
-        env = gym.make_vec(env_name, num_envs=num_env,vectorization_mode="async")
+        env = gym.make_vec(env_name, num_envs=num_env,vectorization_mode="sync")
     else:
         env = gym.make(env_name, autoreset=False)
     return env
