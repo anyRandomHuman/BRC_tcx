@@ -2,7 +2,7 @@ import numpy as np
 import gymnasium as gym
 import random
 
-from envpool.mujoco.dmc.registration import task_name
+# from envpool.mujoco.dmc.registration import task_name
 from gymnasium.wrappers import FlattenObservation, RescaleAction, TimeLimit
 from numpy.f2py.auxfuncs import throw_error
 from numpy.f2py.f90mod_rules import options
