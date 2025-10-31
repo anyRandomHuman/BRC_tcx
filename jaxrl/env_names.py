@@ -349,7 +349,8 @@ def get_environment_list(env_names: str | list):
     if env_names in EnvironmentsDict.keys():
         return EnvironmentsDict[env_names]
     elif isinstance(env_names, str):
-        return [env_names]
+        return env_names.split(' ')
+        # return [env_names]
     elif isinstance(env_names, list):
         return env_names
     
