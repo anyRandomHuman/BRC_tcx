@@ -47,7 +47,7 @@ def main(_):
         env_names = get_environment_list(env_name)
         num_tasks = len(env_names)
 
-        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[0] == len(os.listdir(task_path)):
+        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[0,1] == len(os.listdir(task_path)):
             continue
 
 
@@ -80,8 +80,8 @@ def main(_):
             eval_stats = env.evaluate(agent, num_episodes=1, temperature=0.0, render=True, max_render_steps=episode_len)
 
             renders = eval_stats['renders']
-            summary.loc[-1, 'goal'] += eval_stats['goal']
-            summary.loc[-1, 'return'] += eval_stats['return']
+            summary.iloc[-1, 2] += eval_stats['goal']
+            summary.iloc[-1, 3] += eval_stats['return']
             videos_dir = f'{submit_dir}/videos/{env_name}/{seeds}'
             os.makedirs(videos_dir, exist_ok=True)
             for j in range(renders.shape[0]):
