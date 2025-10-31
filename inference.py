@@ -41,14 +41,16 @@ def main(_):
             continue
 
         existing_record = summary[summary['task'] == task]
-        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[1] == len(os.listdir(task_path)):
-            continue
-
         checkpoint_name = task
         task_path = f'{save_dir}/{task}'
         env_name = str(checkpoint_name)
         env_names = get_environment_list(env_name)
         num_tasks = len(env_names)
+
+        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[0] == len(os.listdir(task_path)):
+            continue
+
+
 
         env = ParallelEnv(env_names, seed=0)
 
