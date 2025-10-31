@@ -94,8 +94,8 @@ def main(_):
                 video_path = os.path.join(videos_dir, f'task_{j}.npy')
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
-        mean_goal /= num_seeds
-        mean_return /= num_seeds
+        mean_goal /= min(num_seeds, 1)
+        mean_return /= min(num_seeds, 1)
         entry_list.append({'task':task, 'num_seeds':num_seeds, 'goal': mean_goal, 'return':mean_return})
 
     df = pandas.concat([df, DataFrame(entry_list)], ignore_index=True)
