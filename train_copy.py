@@ -23,10 +23,10 @@ if not os.environ.get('SLURM_SUBMIT_DIR'):
     flags.DEFINE_integer('eval_episodes', 1, 'Number of episodes used for evaluation.')
     flags.DEFINE_integer('eval_interval', 30, 'Eval interval.')
     flags.DEFINE_integer('batch_size', 20, 'Mini batch size.')
-    flags.DEFINE_integer('max_steps', 100, 'Number of training steps.')
+    flags.DEFINE_integer('max_steps', 50, 'Number of training steps.')
     flags.DEFINE_integer('replay_buffer_size', 10, 'Replay buffer size.')
     flags.DEFINE_integer('start_training', 15,'Number of training steps to start training.')
-    flags.DEFINE_string('env_names', 'h1-walk=v0', 'Environment name.')
+    flags.DEFINE_string('env_names', 'dog-walk', 'Environment name.')
     flags.DEFINE_boolean('log_to_wandb', True, 'Whether to log to wandb.')
     flags.DEFINE_boolean('offline_evaluation', False, 'Whether to perform evaluations with temperature=0.')
     flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
@@ -52,7 +52,7 @@ else:
     flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
     flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
     flags.DEFINE_integer('assigned_time', 64800, 'Width of the critic network.')
-    flags.DEFINE_integer('num_envs', 2, 'number of repeated envs per task')
+    flags.DEFINE_integer('num_envs', 1, 'number of repeated envs per task')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -121,10 +121,10 @@ def main(_):
         save_space = '.'
     save_dir = save_space + '/checkpoints'
     #   save_dir = FLAGS.save_location
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}_test_{FLAGS.seed}'
-    os.makedirs(save_path, exist_ok=True)
+    # if not os.path.exists(save_dir):
+    #     os.makedirs(save_dir)
+    # save_path = f'{save_dir}/{FLAGS.env_names}/{FLAGS.seed}'
+    # os.makedirs(save_path, exist_ok=True)
 
     obs = env.reset()
     start_iter = 0
@@ -140,12 +140,12 @@ def main(_):
             pause_iter = i
             os.remove(f'{submit_dir}/pause_test.flag')
             break
-        if FLAGS.assigned_time - run_time < 300:
-            with open(f'{save_path}/pause.txt', 'w') as f:
-                f.write(f'{i}')
-            print('runtime insufficient, quitting')
-            replay_buffer.save(save_path)
-            break
+        # if FLAGS.assigned_time - run_time < 300:
+        #     with open(f'{save_path}/pause.txt', 'w') as f:
+        #         f.write(f'{i}')
+        #     print('runtime insufficient, quitting')
+        #     # replay_buffer.save(save_path)
+        #     break
         obs = sample(i + FLAGS.start_training, obs)
         print(obs.shape)
         batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
@@ -154,7 +154,7 @@ def main(_):
         if i % eval_interval == 0 and i >= FLAGS.start_training:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env, render=FLAGS.render)
 
-    agent.save(save_path)
+    # agent.save(save_path)
 
 
 
