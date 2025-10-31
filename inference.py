@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pandas
 
 from jaxrl.agent.brc_learner import BRC
 from jaxrl.envs import ParallelEnv
@@ -14,7 +15,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 episode_len = 900
 flag = flags.FLAGS
-flags.DEFINE_string('robot', 'cheetah', 'Name of the robot to use.')
+flags.DEFINE_string('robot', 'dog', 'Name of the robot to use.')
 flags.DEFINE_string('task', '', 'Name of whole task')
 
 def main(_):
@@ -33,24 +34,26 @@ def main(_):
         summary = read_csv(out_path)
 
     if FLAGS.task != '':
-        tasks =  enumerate(str.split(FLAGS.task, ' '))
+        tasks =  str.split(FLAGS.task, ' ')
     else:
-        tasks = enumerate(os.listdir(save_dir))
-    for i, task in tasks:
-        if not FLAGS.robot == task.split('-')[0]:
-            continue
+        tasks = os.listdir(save_dir)
+        for i, task in enumerate(tasks):
+            if not FLAGS.robot == task.split('-')[0]:
+                tasks.pop(i)
 
-        existing_record = summary[summary['task'] == task]
+    entry_list = []
+    to_remove_idx = []
+    for index, row in summary.iterrows():
+        if row['task'] in tasks:
+            to_remove_idx.append(index)
+    df = summary.drop(to_remove_idx)
+
+    for i, task in enumerate(tasks):
         checkpoint_name = task
         task_path = f'{save_dir}/{task}'
         env_name = str(checkpoint_name)
         env_names = get_environment_list(env_name)
         num_tasks = len(env_names)
-
-        if FLAGS.task == '' and len(existing_record) == 1 and existing_record.iloc[0,1] == len(os.listdir(task_path)):
-            continue
-
-
 
         env = ParallelEnv(env_names, seed=0)
 
@@ -65,14 +68,13 @@ def main(_):
             num_tasks=num_tasks,
             **kwargs,
         )
-
-        summary = summary[summary['task'] != task]
-        idx =len(summary)
-        summary.loc[idx] = [task, len(os.listdir(task_path)), 0., 0.]
+        mean_goal = 0
+        mean_return = 0
+        num_seeds = len(os.listdir(task_path))
 
         for seeds in os.listdir(task_path):
             if not os.path.exists(f'{task_path}/{seeds}/actor.txt'):
-                summary.iloc[-1, 1] -= 1
+                num_seeds -= 1
                 continue
             agent.load_inference(f'{task_path}/{seeds}')
 
@@ -80,8 +82,8 @@ def main(_):
             eval_stats = env.evaluate(agent, num_episodes=1, temperature=0.0, render=True, max_render_steps=episode_len)
 
             renders = eval_stats['renders']
-            summary.iloc[-1, 2] += eval_stats['goal']
-            summary.iloc[-1, 3] += eval_stats['return']
+            mean_goal += eval_stats['goal']
+            mean_return += eval_stats['return']
             videos_dir = f'{submit_dir}/videos/{env_name}/{seeds}'
             os.makedirs(videos_dir, exist_ok=True)
             for j in range(renders.shape[0]):
@@ -91,8 +93,12 @@ def main(_):
                 video_path = os.path.join(videos_dir, f'task_{j}.npy')
                 with open(video_path, 'wb') as f:
                     np.save(f, frames)
-        summary.iloc[-1, 2:4] = summary.iloc[-1, 2:4] / summary.iloc[-1,1]
-    summary.to_csv(out_path, index=False)
+        mean_goal /= num_seeds
+        mean_return /= num_seeds
+        entry_list.append({'task':task, 'num_seeds':num_seeds, 'goal': mean_goal, 'return':mean_return})
+
+    df = pandas.concat([df, DataFrame(entry_list)], ignore_index=True)
+    df.to_csv(out_path, index=False)
 
 
 if __name__ == "__main__":
