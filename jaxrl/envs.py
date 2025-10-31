@@ -2,7 +2,7 @@ import numpy as np
 import gymnasium as gym
 import random
 
-# from envpool.mujoco.dmc.registration import task_name
+from envpool.mujoco.dmc.registration import task_name
 from gymnasium.wrappers import FlattenObservation, RescaleAction, TimeLimit
 from numpy.f2py.auxfuncs import throw_error
 from numpy.f2py.f90mod_rules import options
@@ -302,7 +302,7 @@ class ParallelVecEnv(ParallelEnv):
     def reset(self):
         states = []
         for i, env in enumerate(self.envs):
-            states.append(self._reset_mask(i, np.ones(self.num_envs)))
+            states.append(self._reset_mask(i, np.ones(self.num_envs, dtype=np.bool_)))
         return self.reshape_out(np.stack(states))
 
     def _get_goals(self, infos: dict):
