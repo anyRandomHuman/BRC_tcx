@@ -15,7 +15,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 episode_len = 900
 flag = flags.FLAGS
-flags.DEFINE_string('robot', 'dog', 'Name of the robot to use.')
+flags.DEFINE_string('robot', 'h1', 'Name of the robot to use.')
 flags.DEFINE_string('task', '', 'Name of whole task')
 
 def main(_):
@@ -36,10 +36,11 @@ def main(_):
     if FLAGS.task != '':
         tasks =  str.split(FLAGS.task, ' ')
     else:
-        tasks = os.listdir(save_dir)
-        for i, task in enumerate(tasks):
-            if not FLAGS.robot == task.split('-')[0]:
-                tasks.pop(i)
+        ckps = os.listdir(save_dir)
+        tasks = []
+        for i, task in enumerate(ckps):
+            if FLAGS.robot == task.split('-')[0]:
+                tasks.append(task)
 
     entry_list = []
     to_remove_idx = []
