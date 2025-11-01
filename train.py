@@ -129,6 +129,7 @@ def main(_):
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
                                                 render=FLAGS.render)
     agent.save(save_path)
+    exit()
 
             
 if __name__ == '__main__':
