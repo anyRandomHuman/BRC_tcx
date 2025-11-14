@@ -17,7 +17,6 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('seed', 2, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
 flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
-flags.DEFINE_integer('batch_size', 1024, 'Mini batch size.')
 flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
@@ -67,9 +66,10 @@ def main(_):
         num_tasks=num_tasks,
         **kwargs,
     )
+    batch_size = 1024 if agent.multitask else 256
     
     replay_buffer = ParallelReplayBuffer(env.observation_space, env.action_space.shape[-1], FLAGS.replay_buffer_size, num_tasks=num_tasks)    
-    reward_normalizer = RewardNormalizer(num_tasks, agent.target_entropy, discount=agent.discount, max_steps=None) #change max_steps according to env
+    reward_normalizer = RewardNormalizer(num_tasks, agent.discount) #change max_steps according to env
     statistics_recorder = EpisodeRecorder(num_tasks)
     
     
@@ -122,8 +122,8 @@ def main(_):
             replay_buffer.save(save_path)
             break
         obs = sample(i + FLAGS.start_training, obs)
-        batches = replay_buffer.sample(FLAGS.batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
-        batches = reward_normalizer.normalize(batches, agent.get_temperature())
+        batches = replay_buffer.sample(batch_size, FLAGS.updates_per_step)  # sample randomly from all data,not one per task
+        batches = reward_normalizer.normalize(batches)
         _ = agent.update(batches, FLAGS.updates_per_step, i)
         if i % eval_interval == 0 and i >= FLAGS.start_training and FLAGS.evaluate:
             info_dict = statistics_recorder.log(FLAGS, agent, replay_buffer, reward_normalizer, i, eval_env,
