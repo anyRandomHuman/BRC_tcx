@@ -86,8 +86,8 @@ def main(_):
         return observations
 
     submit_dir = os.environ.get('SLURM_SUBMIT_DIR') if os.environ.get('SLURM_SUBMIT_DIR') is not None else '.'
-    save_space = r'/pfs/work9/workspace/scratch/ka_et4232-tcx'
-    save_dir = save_space + '/checkpoints'
+    save_space = r'/pfs/work9/workspace/scratch/ka_et4232-restored/checkpoints/BRC'
+    save_dir = save_space
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
