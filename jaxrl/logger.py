@@ -58,7 +58,7 @@ class EpisodeRecorder:
     
     def log(self, FLAGS, agent, replay_buffer, reward_normalizer, step, eval_env=None, render=False, task_batch=32):
         batches_info = replay_buffer.sample_task_batches(task_batch)
-        batches_info = reward_normalizer.normalize(batches_info, agent.get_temperature())
+        batches_info = reward_normalizer.normalize(batches_info)
         critic, actor, alpha = agent.get_infos(batches_info, FLAGS.evaluate)
         infos_online_eval = self._get_scores()
         if FLAGS.evaluate:
