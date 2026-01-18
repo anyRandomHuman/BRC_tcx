@@ -16,7 +16,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('seed', 2, 'Random seed.')
 flags.DEFINE_integer('eval_episodes', 10, 'Number of episodes used for evaluation.')
-flags.DEFINE_integer('eval_interval', 50000, 'Eval interval.')
+flags.DEFINE_integer('eval_interval', 5000, 'Eval interval.')
 flags.DEFINE_integer('max_steps', int(1000000), 'Number of training steps.')
 flags.DEFINE_integer('replay_buffer_size', int(1000000), 'Replay buffer size.')
 flags.DEFINE_integer('start_training', int(5000),'Number of training steps to start training.')
