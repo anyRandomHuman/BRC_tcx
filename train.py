@@ -28,6 +28,7 @@ flags.DEFINE_boolean('render', False, 'Whether to log the rendering to wandb.')
 flags.DEFINE_integer('updates_per_step', 2, 'Number of updates per step.')
 flags.DEFINE_integer('width_critic', 4096, 'Width of the critic network.')
 flags.DEFINE_integer('time', 144000, 'Width of the critic network.')
+flags.DEFINE_string('save_path', 'pendulum-spin', 'Environment name.')
 
 def main(_):
     print(f'task: {FLAGS.env_names}')
@@ -91,7 +92,7 @@ def main(_):
  #   save_dir = FLAGS.save_location
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    save_path = f'{save_dir}/{FLAGS.env_names}/{FLAGS.seed}'
+    save_path = f'{save_dir}/{FLAGS.save_path}/{FLAGS.seed}'
     os.makedirs(save_path, exist_ok=True)
     
 
